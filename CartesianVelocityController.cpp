@@ -18,13 +18,6 @@
 // Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "CartesianVelocityController.hpp"
-#include <kdl/kinfam_io.hpp>
-#include <kdl/chainiksolvervel_pinv_givens.hpp>
-#include <kdl/chainiksolvervel_pinv.hpp>
-#include <kdl/chainfksolverpos_recursive.hpp>
-
-#include <ocl/ComponentLoader.hpp>
-ORO_LIST_COMPONENT_TYPE( OCL::CartesianVelocityController );
 
 namespace OCL
 {
@@ -34,22 +27,21 @@ namespace OCL
 
     CartesianVelocityController::CartesianVelocityController(string name) :
         TaskContext(name,PreOperational),
-        cartpos_port("CartesianSensorPosition",KDL::Frame::Identity()),
-        cartvel_port("CartesianOutputVelocity",KDL::Twist::Zero()),
-        naxespos_port("nAxesSensorPosition"),
-        naxesvel_port("nAxesOutputVelocity"),
         chain_prop("Chain","Kinematic Description of the robot chain"),
         toolframe("ToolLocation","Offset between the robot's end effector and the tool location"),
         kinematics_status(true)
     {
         //Create the ports
-        this->ports()->addPort(&cartpos_port);
-        this->ports()->addPort(&cartvel_port);
-        this->ports()->addPort(&naxespos_port);
-        this->ports()->addPort(&naxesvel_port);
+	this->addPort("CartesianSensorPosition", cartpos_port);
+        this->addPort("CartesianOutputVelocity", cartvel_port);
+        this->addPort("nAxesSensorPosition", naxespos_port);
+        this->addPort("nAxesOutputVelocity", naxesvel_port);
 
-        this->properties()->addProperty(&chain_prop);
-        this->properties()->addProperty(&toolframe);
+        cartpos_port.write(KDL::Frame::Identity());
+        // initialize cartvel_port to KDL::Twist::Zero()
+
+        this->properties()->addProperty(chain_prop);
+        this->properties()->addProperty(toolframe);
 
     }
 
@@ -93,8 +85,8 @@ namespace OCL
     void CartesianVelocityController::updateHook()
     {
         //Read out the ports
-        naxespos_port.Get(naxesposition);
-        cartvel_port.Get(cartvel);
+        naxespos_port.read(naxesposition);
+        cartvel_port.read(cartvel);
 
         //Check if the jointpositions-port value as a correct size
         if(nj==naxesposition.size()){
@@ -107,7 +99,7 @@ namespace OCL
             kinematics_status = fksolver->JntToCart(*jointpositions,cartpos);
             //Only set result to port if it was calcuted correctly
             if(kinematics_status>=0)
-                cartpos_port.Set(cartpos);
+                cartpos_port.write(cartpos);
             else
                 log(Error)<<"Could not calculate forward kinematics"<<endlog();
 
@@ -121,7 +113,7 @@ namespace OCL
             for(unsigned int i=0;i<nj;i++)
                 naxesvelocities[i]=(*jointvelocities)(i);
 
-            naxesvel_port.Set(naxesvelocities);
+            naxesvel_port.write(naxesvelocities);
         }
         else
             kinematics_status=-1;
@@ -131,12 +123,9 @@ namespace OCL
     {
         for(unsigned int i=0;i<nj;i++)
             naxesvelocities[i]=0.0;
-        naxesvel_port.Set(naxesvelocities);
+        naxesvel_port.write(naxesvelocities);
     }
 
 }
 
-
-
-
-
+ORO_CREATE_COMPONENT( OCL::CartesianVelocityController );

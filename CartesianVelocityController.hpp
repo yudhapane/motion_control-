@@ -20,14 +20,21 @@
 #ifndef __CARTESIAN_VELOCITY_CONTROLLER_HPP__
 #define __CARTESIAN_VELOCITY_CONTROLLER_HPP__
 
+#include <kdl/frames.hpp>
 #include <kdl/chain.hpp>
 #include <kdl/chainfksolver.hpp>
 #include <kdl/chainiksolver.hpp>
+#include <kdl/kinfam_io.hpp>
+#include <kdl/chainiksolvervel_pinv_givens.hpp>
+#include <kdl/chainiksolvervel_pinv.hpp>
+#include <kdl/chainfksolverpos_recursive.hpp>
 
 #include <rtt/TaskContext.hpp>
-#include <rtt/Ports.hpp>
+#include <rtt/InputPort.hpp>
+#include <rtt/OutputPort.hpp>
+#include <rtt/Property.hpp>
 
-#include <ocl/OCL.hpp>
+#include <ocl/Component.hpp>
 
 namespace OCL
 {
@@ -69,10 +76,10 @@ namespace OCL
         KDL::Twist    cartvel;
         KDL::Frame    cartpos;
 
-        RTT::DataPort<KDL::Frame> cartpos_port;
-        RTT::DataPort<KDL::Twist> cartvel_port;
-        RTT::DataPort<std::vector<double> > naxespos_port;
-        RTT::DataPort<std::vector<double> > naxesvel_port;
+        RTT::OutputPort<KDL::Frame> cartpos_port;
+        RTT::InputPort<KDL::Twist> cartvel_port;
+        RTT::InputPort<std::vector<double> > naxespos_port;
+        RTT::OutputPort<std::vector<double> > naxesvel_port;
 
         RTT::Property<KDL::Chain> chain_prop;
         RTT::Property<KDL::Frame> toolframe;

@@ -1,16 +1,32 @@
-DEPENDENT_OPTION( BUILD_CARTESIAN "Build Cartesian Control Components" ON "BUILD_MOTION;KDL_FOUND" OFF)
+cmake_minimum_required(VERSION 2.4.6)
+include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 
-#Always process subdirs
-ADD_SUBDIRECTORY( tests )
+# Set the build type.  Options are:
+#  Coverage       : w/ debug symbols, w/o optimization, w/ code-coverage
+#  Debug          : w/ debug symbols, w/o optimization
+#  Release        : w/o debug symbols, w/ optimization
+#  RelWithDebInfo : w/ debug symbols, w/ optimization
+#  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
+#set(ROS_BUILD_TYPE RelWithDebInfo)
 
-IF ( BUILD_CARTESIAN )
+rosbuild_init()
 
-    # This gathers all the .cpp files into the variable 'SRCS'
-    FILE( GLOB SRCS [^.]*.cpp )
-    FILE( GLOB HPPS [^.]*.hpp )
+rosbuild_add_library(cartesian_velocity_controller CartesianVelocityController.cpp)
+set_target_properties(cartesian_velocity_controller PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib/orocos)
+#set the default path for built executables to the "bin" directory
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
+#set the default path for built libraries to the "lib" directory
+set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
-    INCLUDE_DIRECTORIES( ${PROJECT_SOURCE_DIR}/motion_control/naxes/ )
-    GLOBAL_ADD_COMPONENT( orocos-cartesian ${SRCS} )
-    GLOBAL_ADD_INCLUDE( ocl ${HPPS})
-    COMPONENT_ADD_LIBS(orocos-cartesian ${KDL_LIBS})
-ENDIF ( BUILD_CARTESIAN )
+#uncomment if you have defined messages
+#rosbuild_genmsg()
+#uncomment if you have defined services
+#rosbuild_gensrv()
+
+#common commands for building c++ executables and libraries
+#rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
+#target_link_libraries(${PROJECT_NAME} another_library)
+#rosbuild_add_boost_directories()
+#rosbuild_link_boost(${PROJECT_NAME} thread)
+#rosbuild_add_executable(example examples/example.cpp)
+#target_link_libraries(example ${PROJECT_NAME})
