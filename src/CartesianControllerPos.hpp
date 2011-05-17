@@ -22,17 +22,16 @@
 #define __CARTESIAN_POS_CONTROLLER_H__
 
 #include <rtt/RTT.hpp>
-
 #include <rtt/TaskContext.hpp>
-#include <rtt/Properties.hpp>
-#include <rtt/Ports.hpp>
+#include <rtt/Property.hpp>
+#include <rtt/Port.hpp>
 
 #include <kdl/kdl.hpp>
 #include <kdl/frames.hpp>
 
 #include <ocl/OCL.hpp>
 
-namespace OCL
+namespace MotionControl
 {
     /**
      * This class implements a TaskContext that controlls the
@@ -70,16 +69,16 @@ namespace OCL
     protected:
         /// DataPort containing the measured frame, shared with
         /// OCL::CartesianSensor
-        RTT::ReadDataPort< KDL::Frame >  _position_meas;
+        RTT::InputPort< KDL::Frame >  _position_meas;
         /// DataPort containing the desired frame, shared with
         /// OCL::CartesianGeneratorPos
-        RTT::ReadDataPort< KDL::Frame >  _position_desi;
+        RTT::InputPort< KDL::Frame >  _position_desi;
         /// DataPort containing the output twist, represented in the
         /// base frame with end-effector reference point, shared with
         /// OCL::CartesianEffectorVel
-        RTT::WriteDataPort< KDL::Twist > _velocity_out;
+        RTT::OutputPort< KDL::Twist > _velocity_out;
         /// Vector with the control gain value for each dof.
-        RTT::Property< std::vector<double> >      _controller_gain;
+        std::vector<double> _controller_gain;
 
     }; // class
 }//namespace

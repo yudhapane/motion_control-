@@ -20,79 +20,65 @@
 
 
 #include "CartesianControllerPos.hpp"
-#include <assert.h>
-#include <ocl/ComponentLoader.hpp>
 
-ORO_CREATE_COMPONENT_TYPE();
-ORO_LIST_COMPONENT_TYPE( OCL::CartesianControllerPos );
+using namespace RTT;
+using namespace KDL;
+using namespace std;
 
-namespace OCL
+namespace MotionControl
 {
-
-    using namespace RTT;
-    using namespace KDL;
-    using namespace std;
-
-
     CartesianControllerPos::CartesianControllerPos(string name)
         : TaskContext(name,PreOperational),
           _gain_local(6,0.0),
           _position_meas("CartesianSensorPosition"),
           _position_desi("CartesianDesiredPosition"),
           _velocity_out("CartesianOutputVelocity"),
-          _controller_gain("K", "Proportional Gain",vector<double>(6,0.0))
+          _controller_gain(6,0.0)
     {
-        //Creating TaskContext
+        this->ports()->addPort("CartesianSensorPosition", _position_meas);
+        this->ports()->addPort("CartesianDesiredPosition", _position_desi);
+        this->ports()->addPort("CartesianOutputVelocity", _velocity_out);
 
-        //Adding Ports
-        this->ports()->addPort(&_position_meas);
-        this->ports()->addPort(&_position_desi);
-        this->ports()->addPort(&_velocity_out);
-
-        //Adding Properties
-        this->properties()->addProperty(&_controller_gain);
-
+        this->addProperty("p-gain", _controller_gain).doc("Proportional controller gain");
     }
 
-    CartesianControllerPos::~CartesianControllerPos(){};
+    CartesianControllerPos::~CartesianControllerPos() {};
 
     bool CartesianControllerPos::configureHook()
     {
-        //        if(!marshalling()->readProperties(this->getName()+".cpf"))
-        //    return false;
-        //Check if size is correct
-        if(_controller_gain.value().size()!=6)
+        if(_controller_gain.size()!=6)
             return false;
-        //copy property values in local variable
-        _gain_local=_controller_gain.value();
+        _gain_local=_controller_gain;
         return true;
     }
 
-    bool CartesianControllerPos::startHook()
-    {
-        return true;
-    }
+    bool CartesianControllerPos::startHook() { return true; }
 
     void CartesianControllerPos::updateHook()
     {
+        FlowStatus fs;
         // copy Input and Setpoint to local values
-        _position_meas_local = _position_meas.Get();
-        _position_desi_local = _position_desi.Get();
+        fs = _position_meas.read(_position_meas_local);
+        if (fs == NoData)
+            return;
+
+        fs = _position_desi.read(_position_desi_local);
+        if (fs == NoData)
+            return;
+
         // feedback on position
         _velocity_out_local = diff(_position_meas_local, _position_desi_local);
 
         for(unsigned int i=0; i<6; i++)
             _velocity_out_local(i) *= _gain_local[i];
 
-        _velocity_out.Set(_velocity_out_local);
+        _velocity_out.write(_velocity_out_local);
     }
 
-    void CartesianControllerPos::stopHook()
-    {
-    }
-
-    void CartesianControllerPos::cleanupHook()
-    {
-    }
+    void CartesianControllerPos::stopHook() {}
+    void CartesianControllerPos::cleanupHook() {}
 
 }//namespace
+
+#include "ocl/Component.hpp"
+ORO_CREATE_COMPONENT( MotionControl::CartesianControllerPos )

@@ -1,17 +1,12 @@
 <package>
-  <description brief="motion_control">
-
-     motion_control
-
-  </description>
-  <author>Ruben Smits</author>
-  <license>LGPL</license>
-  <review status="unreviewed" notes=""/>
-  <url></url>
-  <depend package="kdl"/>
-  <depend package="rtt"/>
-  <depend package="ocl"/>
-
+    <description brief="Orocos motion_control Component package">
+        This package contains the components of the motion_control package
+    </description>
+    <!--NOTE: set the license and author before you publish this code-->
+    <license></license>
+    <author>Unknown Author</author>
+    <depend package="rtt" />
+    <depend package="ocl" />
+    <depend package="orocos_kdl" />
 </package>
-
 
