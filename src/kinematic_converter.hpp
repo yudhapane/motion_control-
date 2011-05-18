@@ -1,8 +1,9 @@
-// Copyright  (C)  2007  Ruben Smits <ruben dot smits at mech dot kuleuven dot be>
-
+// Copyright (C) 2007  Ruben Smits <ruben dot smits at mech dot kuleuven dot be>
+// Copyright (C) 2011 Markus Klotzbuecher <markus.klotzbuecher@mech.kuleuven.be>
+//
 // Author: Ruben Smits <ruben dot smits at mech dot kuleuven dot be>
 // URL: http://www.orocos.org/ocl
-
+//
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
 // License as published by the Free Software Foundation; either
