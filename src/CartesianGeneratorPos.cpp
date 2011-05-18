@@ -21,10 +21,10 @@
 #include "CartesianGeneratorPos.hpp"
 #include <ocl/Component.hpp>
 
-ORO_CREATE_COMPONENT( trajectory_generators::CartesianGeneratorPos)
+ORO_CREATE_COMPONENT( MotionControl::CartesianGeneratorPos)
 ;
 
-namespace trajectory_generators {
+namespace MotionControl {
 
 using namespace RTT;
 using namespace KDL;

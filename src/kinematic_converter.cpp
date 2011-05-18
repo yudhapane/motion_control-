@@ -20,7 +20,7 @@
 
 #include "kinematic_converter.hpp"
 
-namespace OCL
+namespace MotionControl
 {
     using namespace std;
     using namespace RTT;
@@ -129,4 +129,4 @@ namespace OCL
 
 }
 
-ORO_CREATE_COMPONENT( OCL::KinematicConverter );
+ORO_CREATE_COMPONENT( MotionControl::KinematicConverter );

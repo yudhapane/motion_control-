@@ -32,7 +32,7 @@
 #include <kdl/kdl.hpp>
 #include <kdl/frames.hpp>
 
-namespace trajectory_generators
+namespace MotionControl
 {
     /**
      * This class implements a TaskContext that creates a path in
@@ -40,8 +40,8 @@ namespace trajectory_generators
      * new desired cartesian position. It uses trapezoidal
      * velocity-profiles for every dof using a maximum velocity and a
      * maximum acceleration. It generates frame and twist setpoints
-     * which can be used by OCL::CartesianControllerPos,
-     * OCL::CartesianControllerPosVel or OCL::CartesianControllerVel.
+     * which can be used by MotionControl::CartesianControllerPos,
+     * MotionControl::CartesianControllerPosVel or MotionControl::CartesianControllerVel.
      *
      */
     class CartesianGeneratorPos : public RTT::TaskContext
@@ -79,21 +79,21 @@ namespace trajectory_generators
 
     protected:
       /// Dataport containing the current measured end-effector
-      /// frame, shared with OCL::CartesianSensor
+      /// frame, shared with MotionControl::CartesianSensor
       RTT::InputPort< KDL::Frame >   m_position_meas_port;
 
       /// Dataport containing the current desired end-effector
-      /// frame, shared with OCL::CartesianControllerPos,
-      /// OCL::CartesianControllerPosVel
+      /// frame, shared with MotionControl::CartesianControllerPos,
+      /// MotionControl::CartesianControllerPosVel
       RTT::OutputPort< KDL::Frame >  m_position_desi_port;
       /// Dataport containing the current desired end-effector
-      /// twist, shared with OCL::CartesianControllerPosVel,
-      /// OCL::CartesianControllerVel
+      /// twist, shared with MotionControl::CartesianControllerPosVel,
+      /// MotionControl::CartesianControllerVel
       RTT::OutputPort< KDL::Twist >  m_velocity_desi_port;
 
       RTT::OutputPort<bool> m_move_finished_port;
 
   }; // class
-}//namespace
+} //namespace
 
 #endif // __CARTESIAN_GENERATOR_POS_H__

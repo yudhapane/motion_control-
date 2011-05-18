@@ -37,7 +37,7 @@
 
 #include <ocl/Component.hpp>
 
-namespace OCL
+namespace MotionControl
 {
     /**
      * @file   kinematic_converter.hpp
