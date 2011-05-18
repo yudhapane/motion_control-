@@ -17,7 +17,7 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-#include "CartesianVelocityController.hpp"
+#include "kinematic_converter.hpp"
 
 namespace OCL
 {
@@ -25,7 +25,7 @@ namespace OCL
     using namespace RTT;
     using namespace KDL;
 
-    CartesianVelocityController::CartesianVelocityController(string name) :
+    KinematicConverter::KinematicConverter(string name) :
         TaskContext(name,PreOperational),
         chain_prop("Chain","Kinematic Description of the robot chain"),
         toolframe("ToolLocation","Offset between the robot's end effector and the tool location"),
@@ -45,11 +45,11 @@ namespace OCL
 
     }
 
-    CartesianVelocityController::~CartesianVelocityController()
+    KinematicConverter::~KinematicConverter()
     {
     }
 
-    bool CartesianVelocityController::configureHook()
+    bool KinematicConverter::configureHook()
     {
         chain = chain_prop;
         chain.addSegment(Segment(Joint(Joint::None),toolframe.value()));
@@ -66,7 +66,7 @@ namespace OCL
 
     }
 
-    void CartesianVelocityController::cleanupHook()
+    void KinematicConverter::cleanupHook()
     {
         delete jointpositions;
         delete jointvelocities;
@@ -74,7 +74,7 @@ namespace OCL
         delete iksolver;
     }
 
-    bool CartesianVelocityController::startHook()
+    bool KinematicConverter::startHook()
     {
         //Initialize: calculate everything once
         this->updateHook();
@@ -82,7 +82,7 @@ namespace OCL
         return kinematics_status>=0;
     }
 
-    void CartesianVelocityController::updateHook()
+    void KinematicConverter::updateHook()
     {
         //Read out the ports
         naxespos_port.read(naxesposition);
@@ -119,7 +119,7 @@ namespace OCL
             kinematics_status=-1;
     }
 
-    void CartesianVelocityController::stopHook()
+    void KinematicConverter::stopHook()
     {
         for(unsigned int i=0;i<nj;i++)
             naxesvelocities[i]=0.0;
@@ -128,4 +128,4 @@ namespace OCL
 
 }
 
-ORO_CREATE_COMPONENT( OCL::CartesianVelocityController );
+ORO_CREATE_COMPONENT( OCL::KinematicConverter );

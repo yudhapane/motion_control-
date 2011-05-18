@@ -39,7 +39,7 @@
 namespace OCL
 {
     /**
-     * @file   CartesianVelocityController.hpp
+     * @file   kinematic_converter.hpp
      * @author Ruben Smits
      * @date   Mon Aug 20 11:24:08 2007
      *
@@ -51,11 +51,11 @@ namespace OCL
      *
      */
 
-    class CartesianVelocityController : public RTT::TaskContext
+    class KinematicConverter : public RTT::TaskContext
     {
     public:
-        CartesianVelocityController(std::string name);
-        ~CartesianVelocityController();
+        KinematicConverter(std::string name);
+        ~KinematicConverter();
 
         virtual bool configureHook();
         virtual bool startHook();
