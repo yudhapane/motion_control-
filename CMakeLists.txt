@@ -33,6 +33,8 @@ include(${OROCOS-RTT_USE_FILE_PATH}/UseOROCOS-RTT.cmake)
 orocos_component(kinematic_converter src/kinematic_converter.hpp src/kinematic_converter.cpp)
 orocos_component(CartesianControllerPos src/CartesianControllerPos.cpp src/CartesianControllerPos.hpp)
 orocos_component(CartesianControllerVel src/CartesianControllerVel.cpp src/CartesianControllerVel.hpp)
+orocos_component(CartesianControllerPosVel src/CartesianControllerPosVel.cpp src/CartesianControllerPosVel.hpp)
+orocos_component(CartesianGeneratorPos  src/CartesianGeneratorPos.cpp src/CartesianGeneratorPos.hpp)
 
 #
 # You may add multiple orocos_component statements.
