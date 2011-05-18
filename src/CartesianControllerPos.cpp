@@ -40,7 +40,7 @@ namespace MotionControl
         this->ports()->addPort("CartesianDesiredPosition", _position_desi);
         this->ports()->addPort("CartesianOutputVelocity", _velocity_out);
 
-        this->addProperty("p-gain", _controller_gain).doc("Proportional controller gain");
+        this->addProperty("K", _controller_gain).doc("Proportional controller gain");
     }
 
     CartesianControllerPos::~CartesianControllerPos() {};
