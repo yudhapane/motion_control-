@@ -19,19 +19,13 @@
 //
 
 #include "CartesianControllerVel.hpp"
-#include <assert.h>
-#include <ocl/ComponentLoader.hpp>
 
-ORO_LIST_COMPONENT_TYPE( OCL::CartesianControllerVel );
+using namespace RTT;
+using namespace KDL;
+using namespace std;
 
-namespace OCL
+namespace MotionControl
 {
-
-    using namespace RTT;
-    using namespace KDL;
-    using namespace std;
-
-
     CartesianControllerVel::CartesianControllerVel(string name)
         : TaskContext(name,PreOperational),
           _gain_local(6,0.0),
@@ -39,56 +33,49 @@ namespace OCL
           _position_meas("CartesianSensorPosition"),
           _velocity_desi("CartesianDesiredVelocity"),
           _velocity_out("CartesianOutputVelocity"),
-          _controller_gain("K", "Proportional Gain",vector<double>(6,0.0))
+          _controller_gain(6,0.0)
     {
-        //Creating TaskContext
+	    this->ports()->addPort("CartesianSensorPosition", _position_meas);
+        this->ports()->addPort("CartesianDesiredVelocity", _velocity_desi);
+        this->ports()->addPort("CartesianOutputVelocity", _velocity_out);
 
-        //Adding Ports
-        this->ports()->addPort(&_position_meas);
-        this->ports()->addPort(&_velocity_desi);
-        this->ports()->addPort(&_velocity_out);
-
-        //Adding Properties
-        this->properties()->addProperty(&_controller_gain);
-
+        this->addProperty("K", _controller_gain).doc("Proportional controller gain");
     }
 
-
-    CartesianControllerVel::~CartesianControllerVel(){};
+    CartesianControllerVel::~CartesianControllerVel() {};
 
     bool CartesianControllerVel::configureHook()
     {
-//        if(!marshalling()->readProperties(this->getName()+".cpf"))
-//            return false;
-        //Check if size is correct
-        if(_controller_gain.value().size()!=6)
+        if(_controller_gain.size()!=6)
             return false;
-        //copy property values in local variable
-        _gain_local=_controller_gain.value();
+        _gain_local=_controller_gain;
         return true;
     }
 
-    bool CartesianControllerVel::startHook()
-    {
-        return true;
-    }
+    bool CartesianControllerVel::startHook() { return true; }
 
     void CartesianControllerVel::updateHook()
     {
+        FlowStatus fs;
         // copy Input and Setpoint to local values
-        _position_meas_local = _position_meas.Get();
-        _velocity_desi_local = _velocity_desi.Get();
+        fs = _position_meas.read(_position_meas_local);
+        if (fs == NoData)
+            return;
+
+        fs = _velocity_desi.read(_velocity_desi_local);
+        if (fs == NoData)
+            return;
 
         // initialize
-        if (!_is_initialized){
+        if (!_is_initialized) {
             _is_initialized = true;
             _position_integrated = _position_meas_local;
-            _time_begin = TimeService::Instance()->getTicks();
+            _time_begin = os::TimeService::Instance()->getTicks();
         }
 
         // integrate velocity
-        double time_difference = TimeService::Instance()->secondsSince(_time_begin);
-        _time_begin = TimeService::Instance()->getTicks();
+        double time_difference = os::TimeService::Instance()->secondsSince(_time_begin);
+        _time_begin = os::TimeService::Instance()->getTicks();
         _position_integrated = addDelta(_position_integrated, _velocity_desi_local, time_difference);
 
         // position feedback on integrated velocity
@@ -98,19 +85,13 @@ namespace OCL
 
         // feedback + feedforward
         _velocity_out_local = _velocity_desi_local + _velocity_feedback;
-
-        _velocity_out.Set(_velocity_out_local);
+        _velocity_out.write(_velocity_out_local);
     }
 
-    void CartesianControllerVel::stopHook()
-    {
-    }
+    void CartesianControllerVel::stopHook() {}
+    void CartesianControllerVel::cleanupHook() {}
 
-    void CartesianControllerVel::cleanupHook()
-    {
-    }
-
-}//namespace
+} //namespace
 
 
 

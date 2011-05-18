@@ -24,16 +24,16 @@
 #include <rtt/RTT.hpp>
 
 #include <rtt/TaskContext.hpp>
-#include <rtt/TimeService.hpp>
-#include <rtt/Properties.hpp>
-#include <rtt/Ports.hpp>
+#include <rtt/os/TimeService.hpp>
+#include <rtt/Property.hpp>
+#include <rtt/Port.hpp>
 
 #include <kdl/kdl.hpp>
 #include <kdl/frames.hpp>
 
 #include <ocl/OCL.hpp>
 
-namespace OCL
+namespace MotionControl
 {
     /**
      * This class implements a TaskContext that controlls the
@@ -66,24 +66,27 @@ namespace OCL
         KDL::Twist                       _velocity_out_local, _velocity_desi_local, _velocity_feedback;
         std::vector<double>              _gain_local;
 
-        RTT::TimeService::ticks                   _time_begin;
-        bool                                      _is_initialized;
+	    RTT::os::TimeService::ticks          _time_begin;
+        bool                             _is_initialized;
 
     protected:
         /// DataPort containing the measured frame, shared with
         /// OCL::CartesianSensor
-        RTT::ReadDataPort< KDL::Frame >  _position_meas;
+        RTT::InputPort< KDL::Frame >  _position_meas;
         /// DataPort containing the desired twist, represented in the
         /// base frame with end-effector reference point, shared with
         /// OCL::CartesianGeneratorPos
-        RTT::DataPort< KDL::Twist >  _velocity_desi;
+        RTT::InputPort< KDL::Twist >  _velocity_desi;
         /// DataPort containing the output twist, represented in the
         /// base frame with end-effector reference point, shared with
         /// OCL::CartesianEffectorVel
-        RTT::WriteDataPort< KDL::Twist > _velocity_out;
+        RTT::OutputPort< KDL::Twist > _velocity_out;
         /// Vector with the control gain value for each dof.
-        RTT::Property< std::vector<double> >      _controller_gain;
+        std::vector<double>           _controller_gain;
 
     }; // class
-}//namespace
+} //namespace
 #endif // __N_AXES_CARTESIAN_VEL_CONTROLLER_H__
+
+#include "ocl/Component.hpp"
+ORO_CREATE_COMPONENT( MotionControl::CartesianControllerVel )
