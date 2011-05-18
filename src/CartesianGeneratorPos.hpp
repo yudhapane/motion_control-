@@ -1,7 +1,7 @@
 // $Id: nAxisGeneratorCartesianPos.hpp,v 1.1.1.1 2003/12/02 20:32:06 kgadeyne Exp $
 // Copyright (C) 2003 Klaas Gadeyne <klaas.gadeyne@mech.kuleuven.ac.be>
 //                    Wim Meeussen  <wim.meeussen@mech.kuleuven.ac.be>
-// Copyright (C) 2006 Ruben Smits <ruben.smits@mech.kuleuven.be>
+// Copyright (C) 2010 Ruben Smits <ruben.smits@mech.kuleuven.be>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -24,20 +24,15 @@
 #include <rtt/RTT.hpp>
 
 #include <rtt/TaskContext.hpp>
-#include <rtt/Properties.hpp>
-#include <rtt/Ports.hpp>
-#include <rtt/Command.hpp>
-#include <rtt/Method.hpp>
+#include <rtt/Port.hpp>
 
 #include <kdl/velocityprofile_trap.hpp>
-#include <rtt/TimeService.hpp>
+#include <rtt/os/TimeService.hpp>
 
 #include <kdl/kdl.hpp>
 #include <kdl/frames.hpp>
 
-#include <ocl/OCL.hpp>
-
-namespace OCL
+namespace trajectory_generators
 {
     /**
      * This class implements a TaskContext that creates a path in
@@ -67,56 +62,36 @@ namespace OCL
         virtual void cleanupHook();
 
     private:
-        bool moveTo(KDL::Frame frame, double time=0);
-        bool moveFinished() const;
-        void resetPosition();
+      bool moveTo(KDL::Frame pose, double time=0);
+      void resetPosition();
 
-        KDL::Frame                        _traject_end, _traject_begin;
-        KDL::Frame                        _position_desi_local;
-        KDL::Twist                        _velocity_desi_local, _velocity_begin_end, _velocity_delta;
-        std::vector<double>               _maximum_velocity_local, _maximum_acceleration_local;
+      KDL::Frame                        m_traject_end, m_traject_begin;
+      KDL::Frame                        m_position_desi_local;
+      KDL::Twist                        m_velocity_desi_local, m_velocity_begin_end, m_velocity_delta;
+      KDL::Twist                        m_maximum_velocity, m_maximum_acceleration;
 
-        std::vector<KDL::VelocityProfile_Trap>      _motion_profile;
-        RTT::TimeService::ticks                     _time_begin;
-        RTT::TimeService::Seconds                   _time_passed;
-        double                                      _max_duration;
+      std::vector<KDL::VelocityProfile_Trap>      m_motion_profile;
+      RTT::os::TimeService::ticks                     m_time_begin;
+      RTT::os::TimeService::Seconds                   m_time_passed;
+      double                                      m_max_duration;
 
-        bool                                        _is_moving,once;
+      bool                                        m_is_moving,m_once;
 
     protected:
-        /**
-         * Command to generate the motion. Command stops when the
-         * movement is finished.
-         *
-         * @param frame the desired frame
-         * @param time the minimum time duration of the movement.
-         *
-         * @return false if a previous motion is still going on, true otherwise
-         */
-        RTT::Command<bool(KDL::Frame,double)> _moveTo;
+      /// Dataport containing the current measured end-effector
+      /// frame, shared with OCL::CartesianSensor
+      RTT::InputPort< KDL::Frame >   m_position_meas_port;
 
-        /**
-         * Method that resets the generators desired frame tho the
-         *current measured frame and the desired twist to zero.
-         */
-        RTT::Method<void(void)>           _reset_position;
-        /// Dataport containing the current measured end-effector
-        /// frame, shared with OCL::CartesianSensor
-        RTT::ReadDataPort< KDL::Frame >   _position_meas;
-        /// Dataport containing the current desired end-effector
-        /// frame, shared with OCL::CartesianControllerPos,
-        /// OCL::CartesianControllerPosVel
-        RTT::WriteDataPort< KDL::Frame >  _position_desi;
-        /// Dataport containing the current desired end-effector
-        /// twist, shared with OCL::CartesianControllerPosVel,
-        /// OCL::CartesianControllerVel
-        RTT::WriteDataPort< KDL::Twist >  _velocity_desi;
-        /// Property containing a vector with the maximum velocity of
-        /// each dof
-        RTT::Property< std::vector<double> >  _maximum_velocity;
-        /// Property containing a vector with the maximum acceleration of
-        /// each dof
-        RTT::Property< std::vector<double> >  _maximum_acceleration;
+      /// Dataport containing the current desired end-effector
+      /// frame, shared with OCL::CartesianControllerPos,
+      /// OCL::CartesianControllerPosVel
+      RTT::OutputPort< KDL::Frame >  m_position_desi_port;
+      /// Dataport containing the current desired end-effector
+      /// twist, shared with OCL::CartesianControllerPosVel,
+      /// OCL::CartesianControllerVel
+      RTT::OutputPort< KDL::Twist >  m_velocity_desi_port;
+
+      RTT::OutputPort<bool> m_move_finished_port;
 
   }; // class
 }//namespace
