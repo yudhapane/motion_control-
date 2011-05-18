@@ -1,13 +1,4 @@
 
-Motion control components
+See the automatically generated component interface documentation in
+doc/.
 
-CartesianControllerPos.[ch]pp
-  - Properties
-     control gain for each DOG (vector<6>)
-  - Input:
-     measured position
-     desired position
-  - Output:
-     output velocity (KDL::Twist)
-
-    
