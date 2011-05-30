@@ -1,3 +1,3 @@
 #!/bin/bash
 
-rttdoc -p "motion_control" -dest doc -d -pl "kdl_typekit"
+rttpack dump -p "motion_control" -dest doc -f wiki
