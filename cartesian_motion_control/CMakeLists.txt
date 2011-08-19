@@ -8,7 +8,7 @@ cmake_minimum_required(VERSION 2.6.3)
 # This creates a standard cmake project. You may extend this file with
 # any cmake macro you see fit.
 #
-project(motion_control)
+project(cartesian_motion_control)
 
 #
 # Do setup in case of ros package, If ROS_ROOT is set, it is
