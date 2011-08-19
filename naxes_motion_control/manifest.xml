@@ -6,5 +6,6 @@
     <license></license>
     <author>Unknown Author</author>
     <depend package="rtt" />
+    <depend package="orocos_kdl" />
 </package>
 
