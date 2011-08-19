@@ -45,7 +45,7 @@ orocos_component(nAxesControllerPos src/nAxesControllerPos.cpp)
 #orocos_component(nAxesControllerPosVelAcc src/nAxesControllerPosVel.cpp)
 #orocos_component(nAxesControllerPosVelAcc src/nAxesControllerPosVelAcc.cpp)
 #orocos_component(nAxesControllerVel src/nAxesControllerVel.cpp)
-#orocos_component(nAxesGeneratorPos src/nAxesGeneratorPos.cpp)
+orocos_component(nAxesGeneratorPos src/nAxesGeneratorPos.cpp)
 #orocos_component(nAxesGeneratorVel src/nAxesGeneratorVel.cpp)
 
 #
