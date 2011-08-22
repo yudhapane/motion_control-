@@ -30,7 +30,7 @@ namespace motion_control
 
     nAxesGeneratorPos::nAxesGeneratorPos(const string& name)
       : TaskContext(name,PreOperational),
-	finished_event("finished")
+	finished_event(name+"move_finished")
     {
         //Creating TaskContext
 
@@ -76,9 +76,8 @@ namespace motion_control
       a_max=a_max_prop;
 
       //Resizing all containers to correct size
-      p_m.resize(num_axes);
-      p_d.resize(num_axes);
-      v_d.resize(num_axes);
+      p_d.positions.resize(num_axes);
+      v_d.velocities.resize(num_axes);
       motion_profile.resize(num_axes);
 
       //Initialise motion profiles
@@ -86,9 +85,9 @@ namespace motion_control
 	motion_profile[i].SetMax(v_max[i],a_max[i]);
 
       //Initialise output ports:
-      p_d.assign(num_axes,0);
+      p_d.positions.assign(num_axes,0);
       p_d_port.setDataSample( p_d );
-      v_d.assign(num_axes,0);
+      v_d.velocities.assign(num_axes,0);
       v_d_port.setDataSample( v_d );
       move_finished_port.setDataSample(finished_event);
       return true;
@@ -103,16 +102,17 @@ namespace motion_control
 	log(Error)<<p_m_port.getName()<<" not ready"<<endlog();
 	return false;
       }
-      if(p_m_port.read(p_m)==NoData){
+      if(p_m_port.read(joint_state)==NoData){
 	log(Error)<<"No data available on "<<p_m_port.getName()<<", I refuse to start"<<endlog();
 	return false;
       }
-      if(p_m.size()!=num_axes){
-	log(Error)<<"Size of "<<p_m_port.getName()<<": "<<p_m.size()<<" != " << num_axes<<endlog();
+      if(joint_state.position.size()!=num_axes){
+	log(Error)<<"Size of "<<p_m_port.getName()<<": "<<joint_state.position.size()<<" != " << num_axes<<endlog();
 	return false;
       }
       
-      p_d_port.write( p_m );
+      p_d.positions = joint_state.position;
+      p_d_port.write( p_d );
       is_moving = false;
 
       return true;
@@ -125,15 +125,15 @@ namespace motion_control
             if ( time_passed > max_duration ){// Profile is ended
                 // set end position
                 for (unsigned int i=0; i<num_axes; i++){
-                    p_d[i] = motion_profile[i].Pos( max_duration );
-                    v_d[i] = 0;//_motion_profile[i]->Vel( _max_duration );
+                    p_d.positions[i] = motion_profile[i].Pos( max_duration );
+                    v_d.velocities[i] = 0;//_motion_profile[i]->Vel( _max_duration );
                     is_moving = false;
 		    move_finished_port.write(finished_event);
                 }
             }else{
                 for(unsigned int i=0; i<num_axes; i++){
-                    p_d[i] = motion_profile[i].Pos( time_passed );
-                    v_d[i] = motion_profile[i].Vel( time_passed );
+                    p_d.positions[i] = motion_profile[i].Pos( time_passed );
+                    v_d.velocities[i] = motion_profile[i].Vel( time_passed );
                 }
             }
             p_d_port.write( p_d );
@@ -157,16 +157,16 @@ namespace motion_control
         if (!is_moving){
             max_duration = 0;
             // get current position/
-            p_m_port.read( p_m );
+            p_m_port.read( joint_state );
             for (unsigned int i=0; i<num_axes; i++){
                 // Set motion profiles
-                motion_profile[i].SetProfileDuration( p_m[i], position[i], time );
+                motion_profile[i].SetProfileDuration( joint_state.position[i], position[i], time );
                 // Find lengthiest trajectory
                 max_duration = max( max_duration, motion_profile[i].Duration() );
             }
             // Rescale trajectories to maximal duration
             for(unsigned int i = 0; i < num_axes; i++)
-                motion_profile[i].SetProfileDuration( p_m[i], position[i], max_duration );
+                motion_profile[i].SetProfileDuration( joint_state.position[i], position[i], max_duration );
 
             time_begin = os::TimeService::Instance()->getTicks();
             time_passed = 0;
@@ -185,9 +185,10 @@ namespace motion_control
 
     void nAxesGeneratorPos::resetPosition()
     {
-        p_m_port.read( p_d );
+        p_m_port.read( joint_state );
         for(unsigned int i = 0; i < num_axes; i++)
-            v_d[i] = 0;
+            v_d.velocities[i] = 0;
+	p_d.positions=joint_state.position;
         p_d_port.write( p_d );
         v_d_port.write( v_d );
         is_moving = false;
