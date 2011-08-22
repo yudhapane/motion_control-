@@ -25,6 +25,8 @@
 
 #include <rtt/TaskContext.hpp>
 #include <rtt/Port.hpp>
+#include <sensor_msgs/typekit/Types.hpp>
+#include <motion_control_msgs/typekit/Types.hpp>
 
 #include <kdl/velocityprofile_trap.hpp>
 #include <rtt/os/TimeService.hpp>
@@ -108,14 +110,18 @@ namespace motion_control
         void resetPosition();
 
         unsigned int num_axes;
-        std::vector<double> p_m, p_d, v_d, v_max, a_max;
+        std::vector<double> v_max, a_max;
+        sensor_msgs::JointState joint_state;
+        motion_control_msgs::JointPositions p_d;
+        motion_control_msgs::JointVelocities v_d;
+
     protected:
         /// DataPort containing the current measured position
-        RTT::InputPort< std::vector<double> >  p_m_port;
+        RTT::InputPort< sensor_msgs::JointState >  p_m_port;
         /// DataPort containing the current desired position.
-        RTT::OutputPort< std::vector<double> > p_d_port;
+        RTT::OutputPort< motion_control_msgs::JointPositions > p_d_port;
         /// DataPort containing the current desired velocity.
-        RTT::OutputPort< std::vector<double> > v_d_port;
+        RTT::OutputPort< motion_control_msgs::JointVelocities > v_d_port;
         /// DataPort that will be written to when the motion is finished
         RTT::OutputPort <std::string > move_finished_port;
 
