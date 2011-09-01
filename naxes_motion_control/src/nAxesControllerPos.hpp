@@ -83,7 +83,7 @@ namespace motion_control
 
     private:
         unsigned int        m_num_axes;
-      
+
         sensor_msgs::JointState m_joint_state;
         motion_control_msgs::JointPositions m_p_desi;
         motion_control_msgs::JointVelocities m_v_out;
