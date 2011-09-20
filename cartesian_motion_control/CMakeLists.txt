@@ -35,6 +35,8 @@ orocos_component(CartesianControllerPos src/CartesianControllerPos.cpp src/Carte
 orocos_component(CartesianControllerVel src/CartesianControllerVel.cpp src/CartesianControllerVel.hpp)
 orocos_component(CartesianControllerPosVel src/CartesianControllerPosVel.cpp src/CartesianControllerPosVel.hpp)
 orocos_component(CartesianGeneratorPos  src/CartesianGeneratorPos.cpp src/CartesianGeneratorPos.hpp)
+orocos_component(CartesianImpedanceController  src/CartesianImpedanceController.cpp src/CartesianImpedanceController.hpp)
+
 
 #
 # You may add multiple orocos_component statements.
