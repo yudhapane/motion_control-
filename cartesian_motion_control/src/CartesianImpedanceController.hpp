@@ -60,30 +60,24 @@ namespace MotionControl{
         
     private:
         bool startHook(){
-            m_wrench_out.force.x=0;
-            m_wrench_out.force.y=0;
-            m_wrench_out.force.z=0;
-            m_wrench_out.torque.x=0;
-            m_wrench_out.torque.y=0;
-            m_wrench_out.torque.z=0;
-            port_wrench_out.write(m_wrench_out);
-	    return true;
+            if(port_pose_meas.read(m_pose_desi) == RTT::NoData )
+                return false;
+            return true;
         };
         void updateHook(){
-            if(port_pose_meas.read(m_pose_meas)!=RTT::NoData &&
-               port_pose_desi.read(m_pose_desi)!=RTT::NoData){
-                KDL::Frame pm,pd;
-                tf::PoseMsgToKDL(m_pose_meas,pm);
-                tf::PoseMsgToKDL(m_pose_desi,pd);
-                KDL::Twist delta = diff(pm.Inverse(),pd.Inverse());
-                m_wrench_out.force.x = m_stiffness.linear.x*(delta.vel.x());
-                m_wrench_out.force.y = m_stiffness.linear.y*(delta.vel.y());
-                m_wrench_out.force.z = m_stiffness.linear.z*(delta.vel.z());
-                m_wrench_out.torque.x = m_stiffness.angular.x*(delta.rot.x());
-                m_wrench_out.torque.y = m_stiffness.angular.y*(delta.rot.y());
-                m_wrench_out.torque.z = m_stiffness.angular.z*(delta.rot.z());
-                port_wrench_out.write(m_wrench_out);
-            }
+            port_pose_meas.read(m_pose_meas);
+            port_pose_desi.read(m_pose_desi);
+            KDL::Frame pm,pd;
+            tf::PoseMsgToKDL(m_pose_meas,pm);
+            tf::PoseMsgToKDL(m_pose_desi,pd);
+            KDL::Twist delta = diff(pm.Inverse(),pd.Inverse());
+            m_wrench_out.force.x = m_stiffness.linear.x*(delta.vel.x());
+            m_wrench_out.force.y = m_stiffness.linear.y*(delta.vel.y());
+            m_wrench_out.force.z = m_stiffness.linear.z*(delta.vel.z());
+            m_wrench_out.torque.x = m_stiffness.angular.x*(delta.rot.x());
+            m_wrench_out.torque.y = m_stiffness.angular.y*(delta.rot.y());
+            m_wrench_out.torque.z = m_stiffness.angular.z*(delta.rot.z());
+            port_wrench_out.write(m_wrench_out);
         };
         void stopHook(){
             m_wrench_out.force.x=0;
