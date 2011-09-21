@@ -25,8 +25,8 @@
 
 #include <rtt/TaskContext.hpp>
 #include <rtt/Port.hpp>
-#include <sensor_msgs/typekit/Types.h>
-#include <motion_control_msgs/typekit/Types.h>
+#include <sensor_msgs/typekit/Types.hpp>
+#include <motion_control_msgs/typekit/Types.hpp>
 
 #include <kdl/velocityprofile_trap.hpp>
 #include <rtt/os/TimeService.hpp>
