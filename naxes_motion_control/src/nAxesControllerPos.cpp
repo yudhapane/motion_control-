@@ -24,162 +24,114 @@
 
 namespace motion_control
 {
-  
-  using namespace RTT;
-  using namespace std;
-  typedef nAxesControllerPos MyType;
 
-  
-  nAxesControllerPos::nAxesControllerPos(string name)
-    : TaskContext(name,PreOperational),
-      finished_event("finished")
-  {
-    //Creating TaskContext
-    
-    //Adding Ports
-    this->addPort("nAxesSensorPosition"  , p_meas_port);
-    this->addPort("nAxesDesiredPosition" , p_desi_port);
-    this->addPort("nAxesOutputVelocity"  , v_out_port);
-    this->addPort("finishedMeasuringOffsets", finished_measuring_offsets_port);
-    
-    //Adding Properties
-    this->addProperty("num_axes",num_axes_prop).doc("Number of Axes");
-    this->addProperty("K",gain_prop).doc("Proportional Gain");;
-    this->addAttribute("nAxesVelocityOffset",offset_attr);
+    using namespace RTT;
+    using namespace std;
+    typedef nAxesControllerPos MyType;
 
-    //Adding Commands
-    this->addOperation( "measureVelocityOffset", &MyType::startMeasuringOffsets, this )
-      .doc("calculate the velocity offset on the axes")
-      .arg("time_sleep", "time to wait before starting measurement")
-      .arg("num_samples", "number of samples to take");
+
+    nAxesControllerPos::nAxesControllerPos(const string& name)
+        : TaskContext(name,PreOperational)
+    {
+        //Creating TaskContext
+
+        //Adding Ports
+        this->addPort("JointState"  , port_joint_state);
+        this->addPort("nAxesDesiredPosition" , port_p_desi);
+        this->addPort("nAxesOutputVelocity"  , port_v_out);
+
+        //Adding Properties
+        this->addProperty("num_axes",prop_num_axes).doc("Number of Axes");
+        this->addProperty("K",prop_gain).doc("Proportional Gain");
     }
-  
+
     nAxesControllerPos::~nAxesControllerPos(){};
 
     bool nAxesControllerPos::configureHook()
     {
-      //Check and read all properties
-      num_axes=num_axes_prop;
-      if(gain_prop.size()!=num_axes){
-	Logger::In in(this->getName().data());
-	log(Error)<<"Size of K does not match num_axes" <<endlog();
-	return false;
-      }
+        //Check and read all properties
+        m_num_axes=prop_num_axes;
+        if(prop_gain.size()!=m_num_axes){
+            Logger::In in(this->getName().data());
+            log(Error)<<"Size of K does not match num_axes" <<endlog();
+            return false;
+        }
 
-      gain=gain_prop;
+        m_gain=prop_gain;
 
-      //Resizing all containers to correct size
-      p_meas.resize(num_axes);
-      p_desi.resize(num_axes);
-      offset_measurement.resize(num_axes);
+        //Resizing all containers to correct size
+        m_joint_state.name.resize(m_num_axes);
+        m_joint_state.position.resize(m_num_axes);
+        m_joint_state.velocity.resize(m_num_axes);
+        m_joint_state.effort.resize(m_num_axes);
 
-      //Initialise output ports:
-      v_out.assign(num_axes,0);
-      v_out_port.setDataSample( v_out );
-      finished_measuring_offsets_port.setDataSample(finished_event);
+        m_p_desi.positions.resize(m_num_axes);
 
-      offset_attr = offset_measurement;
-      return true;
+        //Initialise output ports:
+        m_v_out.velocities.assign(m_num_axes,0);
+        port_v_out.write( m_v_out );
+
+        return true;
     }
 
 
-  bool nAxesControllerPos::startHook()
-  {
-    Logger::In in(this->getName());
-    //check connection and sizes of input-ports
-    if(!p_meas_port.connected()){
-      log(Error)<<p_meas_port.getName()<<" not ready"<<endlog();
-      return false;
+    bool nAxesControllerPos::startHook()
+    {
+        Logger::In in(this->getName());
+        //check connection and sizes of input-ports
+        if(!port_joint_state.connected()){
+            log(Error)<<port_joint_state.getName()<<" not ready"<<endlog();
+            return false;
+        }
+        if(!port_p_desi.connected()){
+            log(Error)<<port_p_desi.getName()<<" not ready"<<endlog();
+            return false;
+        }
+        if(port_joint_state.read(m_joint_state)==NoData){
+            log(Error)<<"No data availabe on "<< port_joint_state.getName()<<", I refuse to start!"<<endlog();
+            return false;
+        }
+        if(m_joint_state.position.size()!=m_num_axes){
+            log(Error)<<"Size of "<<port_joint_state.getName()<<": "<<m_joint_state.position.size()<<" != " << m_num_axes<<endlog();
+            return false;
+        }
+        if(port_p_desi.read(m_p_desi)==NoData){
+            log(Error)<<"No data availabe on "<< port_p_desi.getName()<<", I refuse to start!"<<endlog();
+            return false;
+        }
+        if(m_p_desi.positions.size()!=m_num_axes){
+            log(Error)<<"Size of "<<port_p_desi.getName()<<": "<<m_p_desi.positions.size()<<" != " << m_num_axes<<endlog();
+            return false;
+        }
+
+        return true;
+
     }
-    if(!p_desi_port.connected()){
-      log(Error)<<p_desi_port.getName()<<" not ready"<<endlog();
-      return false;
+
+
+    void nAxesControllerPos::updateHook()
+    {
+        // copy Input and Setpoint to local values
+        port_joint_state.read( m_joint_state );
+        port_p_desi.read( m_p_desi );
+
+        // position feedback
+        for(unsigned int i=0; i<m_num_axes; i++)
+            m_v_out.velocities[i] = m_gain[i] * (m_p_desi.positions[i] - m_joint_state.position[i]);
+
+        port_v_out.write( m_v_out );
     }
-    if(p_meas_port.read(p_meas)==NoData){
-      log(Error)<<"No data availabe on "<< p_meas_port.getName()<<", I refuse to start!"<<endlog();
-      return false;
+
+
+
+    void nAxesControllerPos::stopHook()
+    {
+        for(unsigned int i=0; i<m_num_axes; i++){
+            m_v_out.velocities[i] = 0.0;
+        }
+        port_v_out.write( m_v_out );
     }
-    if(p_meas.size()!=num_axes){
-      log(Error)<<"Size of "<<p_meas_port.getName()<<": "<<p_meas.size()<<" != " << num_axes<<endlog();
-      return false;
-    }
-    if(p_desi_port.read(p_desi)==NoData){
-      log(Error)<<"No data availabe on "<< p_desi_port.getName()<<", I refuse to start!"<<endlog();
-      return false;
-    }
-    if(p_desi.size()!=num_axes){
-      log(Error)<<"Size of "<<p_desi_port.getName()<<": "<<p_desi.size()<<" != " << num_axes<<endlog();
-      return false;
-    }
-    
-    //Initialize
-    is_measuring = false;
-    
-    return true;
-    
-  }
-  
-  
-  void nAxesControllerPos::updateHook()
-  {
-    // copy Input and Setpoint to local values
-    p_meas_port.read( p_meas );
-    p_desi_port.read( p_desi );
-    
-    // position feedback
-    for(unsigned int i=0; i<num_axes; i++)
-      v_out[i] = gain[i] * (p_desi[i] - p_meas[i]);
-    
-    // measure offsets
-    if (is_measuring && os::TimeService::Instance()->secondsSince(time_begin) > time_sleep){
-      for (unsigned int i=0; i<num_axes; i++)
-	offset_measurement[i] += v_out[i] / num_samples;
-      num_samples_taken++;
-      if (num_samples_taken == num_samples){
-	is_measuring = false;
-	offset_attr = offset_measurement;
-        finished_measuring_offsets_port.write(finished_event);
-      }
-    }
-    
-    v_out_port.write( v_out );
-  }
-  
-  
-  
-  void nAxesControllerPos::stopHook()
-  {
-    for(unsigned int i=0; i<num_axes; i++){
-      v_out[i] = 0.0;
-    }
-    v_out_port.write( v_out );
-  }
-  
-  bool nAxesControllerPos::startMeasuringOffsets(double _time_sleep, int _num_samples)
-  {
-    Logger::In in(this->getName().data());
-    log(Info) <<"Start measuring offsets"<<endlog();
-    
-    // don't do anything if still measuring
-    if (is_measuring)
-      return false;
-    
-    // get new measurement
-    else{
-      for (unsigned int i=0; i<num_axes; i++){
-	offset_measurement[i] = 0;
-      }
-      time_sleep        = max(1.0, _time_sleep);  // min 1 sec
-      time_begin        = os::TimeService::Instance()->getTicks();
-      num_samples       = max(1,_num_samples);    // min 1 sample
-      num_samples_taken = 0;
-      is_measuring      = true;
-      return true;
-    }
-  }
 
 }//namespace
 
 ORO_CREATE_COMPONENT( motion_control::nAxesControllerPos )
-
-

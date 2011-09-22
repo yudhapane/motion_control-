@@ -28,6 +28,9 @@
 #include <rtt/Port.hpp>
 #include <rtt/OperationCaller.hpp>
 
+#include <sensor_msgs/typekit/Types.hpp>
+#include <motion_control_msgs/typekit/Types.hpp>
+
 namespace motion_control
 {
     /**
@@ -49,7 +52,7 @@ namespace motion_control
          * @param name name of the component
          *
          */
-        nAxesControllerPos(std::string name);
+        nAxesControllerPos(const std::string& name);
 
         virtual ~nAxesControllerPos();
         /**
@@ -79,46 +82,24 @@ namespace motion_control
         virtual void stopHook();
 
     private:
-        /**
-         * Command to measure a velocity offset on the axes. The idea
-         * is to keep the robot at the same position. If a velocity
-         * output is needed to do this, this is the offset you need on
-         * your axes output. The command stops after the measurement.
-         *
-         * @param treshold_moving duration of the measurement
-         * @param num_samples number of samples.
-         *
-         * @return false if still measurering, true otherwise
-         */
-        bool startMeasuringOffsets(double treshold_moving, int num_samples);
+        unsigned int        m_num_axes;
 
-        unsigned int        num_axes;
+        sensor_msgs::JointState m_joint_state;
+        motion_control_msgs::JointPositions m_p_desi;
+        motion_control_msgs::JointVelocities m_v_out;
+        std::vector<double> m_gain;
 
-        std::vector<double> p_meas,p_desi,v_out,offset_measurement,gain;
-    protected:
         /// The measured positions
-        RTT::InputPort< std::vector<double> >    p_meas_port;
+        RTT::InputPort< sensor_msgs::JointState >    port_joint_state;
         /// The desired positions
-        RTT::InputPort< std::vector<double> >    p_desi_port;
+        RTT::InputPort< motion_control_msgs::JointPositions >    port_p_desi;
         /// The output velocities
-        RTT::OutputPort< std::vector<double> >   v_out_port;
-        /// The event port to indicate the end of the measuring offsets
-        RTT::OutputPort< std::string > finished_measuring_offsets_port;
-        ///Attribute containing the calculated offsets after executing
-        ///the measureOffset Command
-        std::vector<double> offset_attr;
+        RTT::OutputPort< motion_control_msgs::JointVelocities >   port_v_out;
 
-    private:
-        int                       num_samples, num_samples_taken;
-        double                    time_sleep;
-        RTT::os::TimeService::ticks   time_begin;
-        bool                      is_measuring;
-    protected:
         /// The control gain values for the axes.
-        std::vector<double>  gain_prop;
+        std::vector<double>  prop_gain;
         /// The number of axes to configure the components with.
-        unsigned int num_axes_prop;
-        std::string finished_event;
+        unsigned int prop_num_axes;
     }; // class
 }//namespace
 #endif // __N_AXES_CONTROLLER_POS_H__

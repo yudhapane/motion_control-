@@ -56,6 +56,11 @@ namespace motion_control
         this->addOperation( "resetPosition", &MyType::resetPosition, this )
 			  .doc("Reset generator position");
         this->addOperation( "pause", &MyType::pause, this ).doc("Pause motion");
+	this->addOperation( "moveToDelayed", &MyType::moveToDelayed, this)
+	    .doc("Set the position setpoint")
+	    .arg("setpoint", "joint setpoint for all axes")
+            .arg("time", "minimum time to complete trajectory")
+	    .arg("delay_times","extra delay times for the axes");
 
     }
 
@@ -64,62 +69,62 @@ namespace motion_control
 
     bool nAxesGeneratorPos::configureHook()
     {
-      Logger::In in(this->getName());
-      num_axes=num_axes_prop;
-      if(v_max_prop.size()!=num_axes){
-	log(Error)<<"Size of max_vel does not match num_axes"<<endlog();
-	return false;
-      }
+        Logger::In in(this->getName());
+        num_axes=num_axes_prop;
+        if(v_max_prop.size()!=num_axes){
+            log(Error)<<"Size of max_vel does not match num_axes"<<endlog();
+            return false;
+        }
 
-      if(a_max_prop.size()!=num_axes){
-	log(Error)<<"Size of max_acc does not match num_axes" <<endlog();
-	return false;
-      }
+        if(a_max_prop.size()!=num_axes){
+            log(Error)<<"Size of max_acc does not match num_axes" <<endlog();
+            return false;
+        }
 
-      v_max=v_max_prop;
-      a_max=a_max_prop;
+        v_max=v_max_prop;
+        a_max=a_max_prop;
 
-      //Resizing all containers to correct size
-      p_d.positions.resize(num_axes);
-      v_d.velocities.resize(num_axes);
-      motion_profile.resize(num_axes);
+        //Resizing all containers to correct size
+        p_d.positions.resize(num_axes);
+        v_d.velocities.resize(num_axes);
+        motion_profile.resize(num_axes);
 
-      //Initialise motion profiles
-      for(unsigned int i=0;i<num_axes;i++)
-	motion_profile[i].SetMax(v_max[i],a_max[i]);
+        //Initialise motion profiles
+        for(unsigned int i=0;i<num_axes;i++)
+            motion_profile[i].SetMax(v_max[i],a_max[i]);
 
-      //Initialise output ports:
-      p_d.positions.assign(num_axes,0);
-      p_d_port.setDataSample( p_d );
-      v_d.velocities.assign(num_axes,0);
-      v_d_port.setDataSample( v_d );
-      move_finished_port.setDataSample(finished_event);
-      return true;
+        //Initialise output ports:
+        p_d.positions.assign(num_axes,0);
+        p_d_port.setDataSample( p_d );
+        v_d.velocities.assign(num_axes,0);
+        v_d_port.setDataSample( v_d );
+        move_finished_port.setDataSample(finished_event);
+        return true;
     }
 
 
     bool nAxesGeneratorPos::startHook()
     {
-      Logger::In in(this->getName());
-      //check connection and sizes of input-ports
-      if(!p_m_port.connected()){
-	log(Error)<<p_m_port.getName()<<" not ready"<<endlog();
-	return false;
-      }
-      if(p_m_port.read(joint_state)==NoData){
-	log(Error)<<"No data available on "<<p_m_port.getName()<<", I refuse to start"<<endlog();
-	return false;
-      }
-      if(joint_state.position.size()!=num_axes){
-	log(Error)<<"Size of "<<p_m_port.getName()<<": "<<joint_state.position.size()<<" != " << num_axes<<endlog();
-	return false;
-      }
-      
-      p_d.positions = joint_state.position;
-      p_d_port.write( p_d );
-      is_moving = false;
-      log(Info)<<"Started"<<endlog();
-      return true;
+        Logger::In in(this->getName());
+        //check connection and sizes of input-ports
+        if(!p_m_port.connected()){
+            log(Error)<<p_m_port.getName()<<" not ready"<<endlog();
+            return false;
+        }
+        if(p_m_port.read(joint_state)==NoData){
+            log(Error)<<"No data available on "<<p_m_port.getName()<<", I refuse to start"<<endlog();
+            return false;
+        }
+        if(joint_state.position.size()!=num_axes){
+            log(Error)<<"Size of "<<p_m_port.getName()<<": "<<joint_state.position.size()<<" != " << num_axes<<endlog();
+            return false;
+        }
+
+        p_d.positions = joint_state.position;
+        p_d_port.write( p_d );
+        is_moving = false;
+
+        return true;
     }
 
     void nAxesGeneratorPos::updateHook()
@@ -132,7 +137,7 @@ namespace motion_control
                 // set end position
                 for (unsigned int i=0; i<num_axes; i++){
                     p_d.positions[i] = motion_profile[i].Pos( max_duration );
-                    v_d.velocities[i] = 0;//_motion_profile[i]->Vel( _max_duration );
+                    v_d.velocities[i] = motion_profile[i].Vel( max_duration );
                     is_moving = false;
                     move_finished_port.write(finished_event);
                 }
@@ -207,13 +212,55 @@ namespace motion_control
 
     }
 
+    bool nAxesGeneratorPos::moveToDelayed(const vector<double>& position, double time, const vector<double>& delay_times )
+    {
+        Logger::In in((this->getName()));
+        if( (position.size()!=num_axes) && (delay_times.size()!=num_axes) ){
+            log(Error)<<"Size of position or delay_times != "<<num_axes<<endlog();
+            return false;
+        }
+
+        // if previous movement is finished
+	if (!is_moving){
+            max_duration = 0;
+            // get current position/
+            p_m_port.read( joint_state );
+            for (unsigned int i=0; i<num_axes; i++){
+                // Set motion profiles
+                motion_profile[i].SetProfileDuration( joint_state.position[i], position[i], time );
+                // Find lengthiest trajectory
+                max_duration = max( max_duration, motion_profile[i].Duration() );
+            }
+	    
+            // Rescale trajectories to maximal duration
+	    double max_delay=0.0;
+            for(unsigned int i = 0; i < num_axes; i++){
+                motion_profile[i].SetProfileDuration( joint_state.position[i], position[i], max_duration+delay_times[i] );
+		max_delay = max(0.0,delay_times[i]);
+	    }
+	    max_duration += max_delay;
+
+            time_begin = os::TimeService::Instance()->getTicks();
+            time_passed = 0;
+
+            is_moving = true;
+            return true;
+        }
+        // still moving
+        else{
+            log(Warning)<<"Still moving, not executing new command."<<endlog();
+            return false;
+        }
+
+    }
+
 
     void nAxesGeneratorPos::resetPosition()
     {
         p_m_port.read( joint_state );
         for(unsigned int i = 0; i < num_axes; i++)
             v_d.velocities[i] = 0;
-	p_d.positions=joint_state.position;
+        p_d.positions=joint_state.position;
         p_d_port.write( p_d );
         v_d_port.write( v_d );
         is_moving = false;
@@ -229,7 +276,3 @@ namespace motion_control
 }//namespace
 
 ORO_CREATE_COMPONENT( motion_control::nAxesGeneratorPos )
-
-
-
-
