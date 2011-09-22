@@ -20,6 +20,7 @@
 
 #include "nAxesGeneratorPos.hpp"
 #include <rtt/Component.hpp>
+#include <rtt/os/MutexLock.hpp>
 
 namespace motion_control
 {
@@ -30,7 +31,7 @@ namespace motion_control
 
     nAxesGeneratorPos::nAxesGeneratorPos(const string& name)
       : TaskContext(name,PreOperational),
-	finished_event(name+"move_finished")
+	finished_event(name+"move_finished"), is_moving(false)
     {
         //Creating TaskContext
 
@@ -38,20 +39,23 @@ namespace motion_control
         this->addProperty("num_axes",num_axes_prop).doc("Number of Axes");
         this->addProperty("max_vel", v_max_prop).doc("Maximum Velocity in Trajectory");
         this->addProperty("max_acc", a_max_prop).doc("Maximum Acceleration in Trajectory");
+        this->addProperty("movingTimeOnPort", movingTimeOnPort).doc("Moving time for desired positions on port. ");
 
         //Adding ports
         this->addPort("nAxesSensorPosition"  , p_m_port );
         this->addPort("nAxesDesiredPosition" , p_d_port );
         this->addPort("nAxesDesiredVelocity" , v_d_port );
-	this->addPort("moveFinished", move_finished_port);
+        this->addPort("moveFinished", move_finished_port);
+        this->addEventPort("nAxesJointPosition"  , joint_endpose_port, boost::bind(&nAxesGeneratorPos::moveToOnPort, this));
 
         //Adding Operations
-        this->addOperation( "moveTo",&MyType::moveTo,this )
+        this->addOperation( "moveTo",&MyType::moveTo,this)
 			  .doc("Set the position setpoint")
 			  .arg("setpoint", "joint setpoint for all axes")
 			  .arg("time", "minimum time to complete trajectory");
         this->addOperation( "resetPosition", &MyType::resetPosition, this )
 			  .doc("Reset generator position");
+        this->addOperation( "pause", &MyType::pause, this ).doc("Pause motion");
 
     }
 
@@ -114,13 +118,15 @@ namespace motion_control
       p_d.positions = joint_state.position;
       p_d_port.write( p_d );
       is_moving = false;
-
+      log(Info)<<"Started"<<endlog();
       return true;
     }
 
     void nAxesGeneratorPos::updateHook()
     {
+    	//log(Info)<<"nAxesGeneratorPos: tack"<<endlog();
         if (is_moving){
+//        	log(Info)<<"nAxesGeneratorPos: tick"<<endlog();
             time_passed = os::TimeService::Instance()->secondsSince(time_begin);
             if ( time_passed > max_duration ){// Profile is ended
                 // set end position
@@ -128,7 +134,7 @@ namespace motion_control
                     p_d.positions[i] = motion_profile[i].Pos( max_duration );
                     v_d.velocities[i] = 0;//_motion_profile[i]->Vel( _max_duration );
                     is_moving = false;
-		    move_finished_port.write(finished_event);
+                    move_finished_port.write(finished_event);
                 }
             }else{
                 for(unsigned int i=0; i<num_axes; i++){
@@ -145,6 +151,15 @@ namespace motion_control
     {
     }
 
+    void nAxesGeneratorPos::moveToOnPort() {
+    	if (joint_endpose_port.read(joint_endpose) == NoData) {
+    		log(Error) << "No desired end-position on port. "<< endlog();
+    		return;
+    	}
+		this->moveTo(joint_endpose.positions, movingTimeOnPort);
+    	return;
+    }
+
     bool nAxesGeneratorPos::moveTo(const vector<double>& position, double time)
     {
         Logger::In in((this->getName()));
@@ -152,7 +167,12 @@ namespace motion_control
             log(Error)<<"Size of position != "<<num_axes<<endlog();
             return false;
         }
+        if (!isRunning()) {
+        	log(Error)<<"Can't move when not running."<<endlog();
+        	return false;
+        }
 
+        RTT::os::MutexLock lock(moving_mut);
         // if previous movement is finished
         if (!is_moving){
             max_duration = 0;
@@ -163,13 +183,20 @@ namespace motion_control
                 max_duration = max( max_duration, motion_profile[i].Duration() );
             }
             // Rescale trajectories to maximal duration
-            for(unsigned int i = 0; i < num_axes; i++)
+            log(Info)<<"Moving to [";
+            for(unsigned int i = 0; i < num_axes; i++){
                 motion_profile[i].SetProfileDuration( p_d.positions[i], position[i], max_duration );
+                log(Info)<<position[i]<<" ";
+            }
+            log(Info)<<"] in "<<max_duration<<" seconds."<<endlog();
+
 
             time_begin = os::TimeService::Instance()->getTicks();
             time_passed = 0;
 
             is_moving = true;
+
+
             return true;
         }
         // still moving
@@ -188,6 +215,14 @@ namespace motion_control
             v_d.velocities[i] = 0;
 	p_d.positions=joint_state.position;
         p_d_port.write( p_d );
+        v_d_port.write( v_d );
+        is_moving = false;
+    }
+
+    void nAxesGeneratorPos::pause()
+    {
+        for(unsigned int i = 0; i < num_axes; i++)
+            v_d.velocities[i] = 0;
         v_d_port.write( v_d );
         is_moving = false;
     }

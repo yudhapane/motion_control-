@@ -30,6 +30,7 @@
 
 #include <kdl/velocityprofile_trap.hpp>
 #include <rtt/os/TimeService.hpp>
+#include <rtt/os/Mutex.hpp>
 
 namespace motion_control
 {
@@ -108,22 +109,29 @@ namespace motion_control
          * current measured position and the desired velocity to zero
          */
         void resetPosition();
+        void pause();
+        void moveToOnPort();
 
         unsigned int num_axes;
         std::vector<double> v_max, a_max;
         sensor_msgs::JointState joint_state;
+        double movingTimeOnPort;
         motion_control_msgs::JointPositions p_d;
         motion_control_msgs::JointVelocities v_d;
+        motion_control_msgs::JointPositions joint_endpose;
 
     protected:
         /// DataPort containing the current measured position
         RTT::InputPort< sensor_msgs::JointState >  p_m_port;
+        /// DataPort containing the desired joint end-position
+        RTT::InputPort<motion_control_msgs::JointPositions> joint_endpose_port;
         /// DataPort containing the current desired position.
         RTT::OutputPort< motion_control_msgs::JointPositions > p_d_port;
         /// DataPort containing the current desired velocity.
         RTT::OutputPort< motion_control_msgs::JointVelocities > v_d_port;
         /// DataPort that will be written to when the motion is finished
         RTT::OutputPort <std::string > move_finished_port;
+
 
     private:
         std::vector<KDL::VelocityProfile_Trap>    motion_profile;
@@ -140,6 +148,7 @@ namespace motion_control
         std::vector<double>      a_max_prop;
         /// Number of axes to configure the component for
         unsigned int num_axes_prop;
+        RTT::os::Mutex moving_mut;
     }; // class
 }//namespace
 #endif // __N_AXES_GENERATOR_POS_H__
