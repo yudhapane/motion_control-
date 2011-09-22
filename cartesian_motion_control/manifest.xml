@@ -8,6 +8,7 @@
     <depend package="rtt" />
     <depend package="ocl" />
     <depend package="orocos_kdl" />
-    <depend package="kdl_typekit" />
+    <depend package="tf_conversions" />
+    <depend package="rtt_ros_integration_geometry_msgs" />
 </package>
 

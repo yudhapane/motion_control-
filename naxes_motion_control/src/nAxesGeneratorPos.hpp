@@ -104,6 +104,26 @@ namespace motion_control
         bool moveTo(const std::vector<double>& position, double time=0);
 
         /**
+         * Operation that generates a new motion-profile starting from
+         * the current position. The command is completed when the
+         * duration is passed. A value will be written to the
+         * moveFinished port to notify other components.
+         *
+         * @param position a vector with the desired positions of the
+         * axes 
+	 * @param time the minimum time duration of the movement,
+         * if zero the movement will be as fast as possible.  
+	 * @param delay_times a vector with (positive) delay times, each
+         * joint trajectory is prolonged with the given delay time
+	 *
+         * @return false if another motion is still going on or the
+         * size of the position parameter or delay_times parameter 
+	 * does not match the number of
+         * axes the component is configured for, true otherwise.
+         */
+        bool moveToDelayed(const std::vector<double>& position, double time, const std::vector<double>& delay_times);
+
+        /**
          * Operation that resets the generators desired position to the
          * current measured position and the desired velocity to zero
          */
