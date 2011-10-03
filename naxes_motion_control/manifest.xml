@@ -9,5 +9,6 @@
     <depend package="orocos_kdl" />
     <depend package="rtt_motion_control_msgs"/>
     <depend package="rtt_sensor_msgs"/>
+    <depend package="rtt_trajectory_msgs" />
 </package>
 

@@ -31,7 +31,7 @@ namespace motion_control
 
     nAxesGeneratorPos::nAxesGeneratorPos(const string& name)
       : TaskContext(name,PreOperational),
-	finished_event(name+"move_finished"), is_moving(false)
+	finished_event(name+"move_finished"), traj_finished_event(name+"traj_finished"), is_moving(false), isTrajMoving(false), trajIndex(0)
     {
         //Creating TaskContext
 
@@ -40,27 +40,30 @@ namespace motion_control
         this->addProperty("max_vel", v_max_prop).doc("Maximum Velocity in Trajectory");
         this->addProperty("max_acc", a_max_prop).doc("Maximum Acceleration in Trajectory");
         this->addProperty("movingTimeOnPort", movingTimeOnPort).doc("Moving time for desired positions on port. ");
-
+        this->addProperty("delayTimes", delay_times_prop).doc("Delay times for each joint. ");
         //Adding ports
         this->addPort("nAxesSensorPosition"  , p_m_port );
         this->addPort("nAxesDesiredPosition" , p_d_port );
         this->addPort("nAxesDesiredVelocity" , v_d_port );
         this->addPort("moveFinished", move_finished_port);
         this->addEventPort("nAxesJointPosition"  , joint_endpose_port, boost::bind(&nAxesGeneratorPos::moveToOnPort, this));
+        this->addEventPort("nAxesJointPositionDelayed"  , joint_endpose_delayed_port, boost::bind(&nAxesGeneratorPos::moveToDelayedOnPort, this));
 
         //Adding Operations
         this->addOperation( "moveTo",&MyType::moveTo,this)
-			  .doc("Set the position setpoint")
-			  .arg("setpoint", "joint setpoint for all axes")
-			  .arg("time", "minimum time to complete trajectory");
+				.doc("Set the position setpoint")
+				.arg("setpoint", "joint setpoint for all axes")
+				.arg("time", "minimum time to complete trajectory");
         this->addOperation( "resetPosition", &MyType::resetPosition, this )
-			  .doc("Reset generator position");
+				.doc("Reset generator position");
         this->addOperation( "pause", &MyType::pause, this ).doc("Pause motion");
-	this->addOperation( "moveToDelayed", &MyType::moveToDelayed, this)
-	    .doc("Set the position setpoint")
-	    .arg("setpoint", "joint setpoint for all axes")
-            .arg("time", "minimum time to complete trajectory")
-	    .arg("delay_times","extra delay times for the axes");
+        this->addOperation( "moveToDelayed", &MyType::moveToDelayed, this)
+				.doc("Set the position setpoint")
+				.arg("setpoint", "joint setpoint for all axes")
+				.arg("time", "minimum time to complete trajectory")
+				.arg("delay_times","extra delay times for the axes");
+        this->addOperation( "moveTraject", &MyType::newTraject, this)
+        		.doc("Set trajectory to be executed as fast as possible, setpoint times will be ignored.");
 
     }
 
@@ -78,6 +81,11 @@ namespace motion_control
 
         if(a_max_prop.size()!=num_axes){
             log(Error)<<"Size of max_acc does not match num_axes" <<endlog();
+            return false;
+        }
+
+        if (delay_times_prop.size() != num_axes){
+            log(Error)<<"Size of delay_times does not match num_axes" <<endlog();
             return false;
         }
 
@@ -141,6 +149,9 @@ namespace motion_control
                     is_moving = false;
                     move_finished_port.write(finished_event);
                 }
+                if (isTrajMoving == true) {
+                	this->moveTraject();
+                }
             }else{
                 for(unsigned int i=0; i<num_axes; i++){
                     p_d.positions[i] = motion_profile[i].Pos( time_passed );
@@ -163,6 +174,44 @@ namespace motion_control
     	}
 		this->moveTo(joint_endpose.positions, movingTimeOnPort);
     	return;
+    }
+
+    void nAxesGeneratorPos::moveToDelayedOnPort() {
+    	if (joint_endpose_delayed_port.read(joint_endpose) == NoData) {
+    		log(Error) << "No desired end-position on port. "<< endlog();
+    		return;
+    	}
+		this->moveToDelayed(joint_endpose.positions, movingTimeOnPort, delay_times_prop);
+    	return;
+    }
+
+    bool nAxesGeneratorPos::newTraject(trajectory_msgs::JointTrajectory& new_traject)
+    {
+    	if (isTrajMoving == false) {
+    		traject = new_traject;
+    		isTrajMoving = true;
+    		trajIndex = 0;
+    		this->moveTo(traject.points[trajIndex].positions, 0.1);
+    		return true;
+    	}
+    	else {
+    		log(Error) << "Previous trajectory is still being executed, new trajectory ignored. "<< endlog();
+    		return false;
+    	}
+
+    }
+
+    bool nAxesGeneratorPos::moveTraject()
+    {
+    	trajIndex = trajIndex + 1;
+    	if (trajIndex < traject.points.size()) {
+    		this->moveTo(traject.points[trajIndex].positions, 0.1);
+    	}
+    	else {
+    		move_finished_port.write(traj_finished_event);
+    		isTrajMoving = false;
+    	}
+		return true;
     }
 
     bool nAxesGeneratorPos::moveTo(const vector<double>& position, double time)
@@ -234,17 +283,17 @@ namespace motion_control
 	    
             // Rescale trajectories to maximal duration
 	    double max_delay=0.0;
-            for(unsigned int i = 0; i < num_axes; i++){
-                motion_profile[i].SetProfileDuration( joint_state.position[i], position[i], max_duration+delay_times[i] );
-		max_delay = max(0.0,delay_times[i]);
+		for(unsigned int i = 0; i < num_axes; i++){
+			motion_profile[i].SetProfileDuration( joint_state.position[i], position[i], max_duration+delay_times[i] );
+			max_delay = max(max_delay, delay_times[i]);
 	    }
 	    max_duration += max_delay;
 
-            time_begin = os::TimeService::Instance()->getTicks();
-            time_passed = 0;
+		time_begin = os::TimeService::Instance()->getTicks();
+		time_passed = 0;
 
-            is_moving = true;
-            return true;
+		is_moving = true;
+		return true;
         }
         // still moving
         else{
@@ -264,6 +313,7 @@ namespace motion_control
         p_d_port.write( p_d );
         v_d_port.write( v_d );
         is_moving = false;
+        isTrajMoving = false;
     }
 
     void nAxesGeneratorPos::pause()
@@ -272,6 +322,7 @@ namespace motion_control
             v_d.velocities[i] = 0;
         v_d_port.write( v_d );
         is_moving = false;
+        isTrajMoving = false;
     }
 }//namespace
 

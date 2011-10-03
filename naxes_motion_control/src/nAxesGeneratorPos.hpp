@@ -32,6 +32,8 @@
 #include <rtt/os/TimeService.hpp>
 #include <rtt/os/Mutex.hpp>
 
+#include <trajectory_msgs/typekit/Types.hpp>
+
 namespace motion_control
 {
     /**
@@ -131,6 +133,9 @@ namespace motion_control
         void resetPosition();
         void pause();
         void moveToOnPort();
+        void moveToDelayedOnPort();
+        bool newTraject(trajectory_msgs::JointTrajectory& new_traject);
+        bool moveTraject();
 
         unsigned int num_axes;
         std::vector<double> v_max, a_max;
@@ -140,11 +145,19 @@ namespace motion_control
         motion_control_msgs::JointVelocities v_d;
         motion_control_msgs::JointPositions joint_endpose;
 
+        trajectory_msgs::JointTrajectory traject;
+        bool isTrajMoving;
+        unsigned int trajIndex;
+        std::string traj_finished_event;
+
+
     protected:
         /// DataPort containing the current measured position
         RTT::InputPort< sensor_msgs::JointState >  p_m_port;
-        /// DataPort containing the desired joint end-position
+        /// DataPort containing the desired joint end-position, tp be used in the moveToOnPort-function
         RTT::InputPort<motion_control_msgs::JointPositions> joint_endpose_port;
+        /// DataPort containing the desired joint end-position, to be used in the moveToDelayedOnPort-function
+        RTT::InputPort<motion_control_msgs::JointPositions> joint_endpose_delayed_port;
         /// DataPort containing the current desired position.
         RTT::OutputPort< motion_control_msgs::JointPositions > p_d_port;
         /// DataPort containing the current desired velocity.
@@ -166,6 +179,8 @@ namespace motion_control
         std::vector<double>      v_max_prop;
         /// Vector with the maximum acceleration of each axis
         std::vector<double>      a_max_prop;
+        /// Vector with the delay times
+        std::vector<double>      delay_times_prop;
         /// Number of axes to configure the component for
         unsigned int num_axes_prop;
         RTT::os::Mutex moving_mut;
