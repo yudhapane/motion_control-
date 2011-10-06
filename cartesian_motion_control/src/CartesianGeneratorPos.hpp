@@ -21,16 +21,18 @@
 #ifndef __CARTESIAN_GENERATOR_POS_H__
 #define __CARTESIAN_GENERATOR_POS_H__
 
-#include <rtt/RTT.hpp>
-
 #include <rtt/TaskContext.hpp>
 #include <rtt/Port.hpp>
-
-#include <kdl/velocityprofile_trap.hpp>
 #include <rtt/os/TimeService.hpp>
 
+#include <geometry_msgs/typekit/Types.h>
+#include <tf_conversions/tf_kdl.h>
+
+#include <kdl/velocityprofile_trap.hpp>
 #include <kdl/kdl.hpp>
 #include <kdl/frames.hpp>
+
+#include <string>
 
 namespace MotionControl
 {
@@ -62,13 +64,14 @@ namespace MotionControl
         virtual void cleanupHook();
 
     private:
-      bool moveTo(KDL::Frame pose, double time=0);
-      void resetPosition();
+        bool moveTo(geometry_msgs::Pose pose, double time=0);
+        void resetPosition();
 
       KDL::Frame                        m_traject_end, m_traject_begin;
       KDL::Frame                        m_position_desi_local;
       KDL::Twist                        m_velocity_desi_local, m_velocity_begin_end, m_velocity_delta;
       KDL::Twist                        m_maximum_velocity, m_maximum_acceleration;
+      geometry_msgs::Twist              m_gm_maximum_velocity, m_gm_maximum_acceleration;
 
       std::vector<KDL::VelocityProfile_Trap>      m_motion_profile;
       RTT::os::TimeService::ticks                     m_time_begin;
@@ -80,20 +83,24 @@ namespace MotionControl
     protected:
       /// Dataport containing the current measured end-effector
       /// frame, shared with MotionControl::CartesianSensor
-      RTT::InputPort< KDL::Frame >   m_position_meas_port;
+      RTT::InputPort< geometry_msgs::Pose >   m_position_meas_port;
 
       /// Dataport containing the current desired end-effector
       /// frame, shared with MotionControl::CartesianControllerPos,
       /// MotionControl::CartesianControllerPosVel
-      RTT::OutputPort< KDL::Frame >  m_position_desi_port;
+      RTT::OutputPort< geometry_msgs::Pose >  m_position_desi_port;
       /// Dataport containing the current desired end-effector
       /// twist, shared with MotionControl::CartesianControllerPosVel,
       /// MotionControl::CartesianControllerVel
-      RTT::OutputPort< KDL::Twist >  m_velocity_desi_port;
+      RTT::OutputPort< geometry_msgs::Twist >  m_velocity_desi_port;
 
       RTT::OutputPort<bool> m_move_finished_port;
 
   }; // class
 } //namespace
 
+#include <rtt/Component.hpp>
+ORO_CREATE_COMPONENT( MotionControl::CartesianGeneratorPos )
+
 #endif // __CARTESIAN_GENERATOR_POS_H__
+

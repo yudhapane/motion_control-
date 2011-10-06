@@ -19,20 +19,19 @@
 //
 
 #include "CartesianGeneratorPos.hpp"
-#include <ocl/Component.hpp>
-
-ORO_CREATE_COMPONENT( MotionControl::CartesianGeneratorPos)
-;
-
-namespace MotionControl {
 
 using namespace RTT;
 using namespace KDL;
 using namespace std;
+using namespace tf;
+
+namespace MotionControl
+{
 
 CartesianGeneratorPos::CartesianGeneratorPos(string name) :
 	TaskContext(name, PreOperational), m_motion_profile(6,
-			VelocityProfile_Trap(0, 0)), m_is_moving(false) {
+			VelocityProfile_Trap(0, 0)), m_is_moving(false)
+{
 	//Creating TaskContext
 
 	//Adding Ports
@@ -42,9 +41,9 @@ CartesianGeneratorPos::CartesianGeneratorPos(string name) :
 	this->addPort("moveFinished", m_move_finished_port);
 
 	//Adding Properties
-	this->addProperty("max_vel", m_maximum_velocity).doc(
+	this->addProperty("max_vel", m_gm_maximum_velocity).doc(
 			"Maximum Velocity in Trajectory");
-	this->addProperty("max_acc", m_maximum_acceleration).doc(
+	this->addProperty("max_acc", m_gm_maximum_acceleration).doc(
 			"Maximum Acceleration in Trajectory");
 
 	//Adding Commands
@@ -59,10 +58,13 @@ CartesianGeneratorPos::CartesianGeneratorPos(string name) :
 
 }
 
-CartesianGeneratorPos::~CartesianGeneratorPos() {
-}
+CartesianGeneratorPos::~CartesianGeneratorPos() { }
 
-bool CartesianGeneratorPos::configureHook() {
+bool CartesianGeneratorPos::configureHook()
+{
+	TwistMsgToKDL(m_gm_maximum_velocity, m_maximum_velocity);
+	TwistMsgToKDL(m_gm_maximum_acceleration, m_maximum_acceleration);
+
 	for (unsigned int i = 0; i < 3; i++) {
 		m_motion_profile[i].SetMax(m_maximum_velocity.vel[i],
 				m_maximum_acceleration.vel[i]);
@@ -73,21 +75,32 @@ bool CartesianGeneratorPos::configureHook() {
 
 }
 
-bool CartesianGeneratorPos::startHook() {
+bool CartesianGeneratorPos::startHook()
+{
 	m_is_moving = false;
 	//initialize
-	Frame starting_pose;
-	if(m_position_meas_port.read(starting_pose)==NoData){
-		log(Error)<<this->getName()<<" cannot start if "<< m_position_meas_port.getName()<<" has no input data."<<endlog();
+	geometry_msgs::Pose gm_starting_pose; Frame starting_pose;
+	geometry_msgs::Twist gm_starting_twist; Twist starting_twist;
+
+	if(m_position_meas_port.read(gm_starting_pose)==NoData){
+		log(Error) << this->getName() << " cannot start if " <<
+			m_position_meas_port.getName()<<" has no input data."<<endlog();
 		return false;
 	}
-	m_position_desi_port.write(starting_pose);
-	Twist starting_twist = Twist::Zero();
-	m_velocity_desi_port.write(starting_twist);
+
+	m_position_desi_port.write(gm_starting_pose);
+	PoseMsgToKDL(gm_starting_pose, starting_pose);
+	starting_twist = Twist::Zero();
+	TwistKDLToMsg(starting_twist, gm_starting_twist);
+	m_velocity_desi_port.write(gm_starting_twist);
 	return true;
 }
 
-void CartesianGeneratorPos::updateHook() {
+void CartesianGeneratorPos::updateHook()
+{
+	geometry_msgs::Pose gm_pos_dsr;
+	geometry_msgs::Twist gm_vel_dsr;
+
 	if (m_is_moving) {
 		m_time_passed = os::TimeService::Instance()->secondsSince(m_time_begin);
 		if (m_time_passed > m_max_duration) {
@@ -98,34 +111,40 @@ void CartesianGeneratorPos::updateHook() {
 			m_is_moving = false;
 		} else {
 			// position
-			m_velocity_delta = Twist(Vector(m_motion_profile[0].Pos(
-					m_time_passed), m_motion_profile[1].Pos(m_time_passed),
-					m_motion_profile[2].Pos(m_time_passed)), Vector(
-					m_motion_profile[3].Pos(m_time_passed),
-					m_motion_profile[4].Pos(m_time_passed),
-					m_motion_profile[5].Pos(m_time_passed)));
-			m_position_desi_local = Frame(m_traject_begin.M * Rot(
-					m_traject_begin.M.Inverse(m_velocity_delta.rot)),
-					m_traject_begin.p + m_velocity_delta.vel);
+			m_velocity_delta = Twist( Vector( m_motion_profile[0].Pos(m_time_passed),
+							  m_motion_profile[1].Pos(m_time_passed),
+							  m_motion_profile[2].Pos(m_time_passed)),
+						  Vector( m_motion_profile[3].Pos(m_time_passed),
+							  m_motion_profile[4].Pos(m_time_passed),
+							  m_motion_profile[5].Pos(m_time_passed)));
+
+			m_position_desi_local = Frame( m_traject_begin.M *
+						       Rot( m_traject_begin.M.Inverse(m_velocity_delta.rot)),
+						       m_traject_begin.p + m_velocity_delta.vel);
 
 			// velocity
 			for (unsigned int i = 0; i < 6; i++)
-				m_velocity_desi_local(i) = m_motion_profile[i].Vel(
-						m_time_passed);
+				m_velocity_desi_local(i) = m_motion_profile[i].Vel(m_time_passed);
 		}
 
-		m_position_desi_port.write(m_position_desi_local);
-		m_velocity_desi_port.write(m_velocity_desi_local);
+		// convert to geometry msgs and send.
+		PoseKDLToMsg(m_position_desi_local, gm_pos_dsr);
+		TwistKDLToMsg(m_velocity_desi_local, gm_vel_dsr);
+		m_position_desi_port.write(gm_pos_dsr);
+		m_velocity_desi_port.write(gm_vel_dsr);
 	}
 }
 
-void CartesianGeneratorPos::stopHook() {
-}
+void CartesianGeneratorPos::stopHook() { }
 
-void CartesianGeneratorPos::cleanupHook() {
-}
+void CartesianGeneratorPos::cleanupHook() { }
 
-bool CartesianGeneratorPos::moveTo(Frame pose, double time) {
+bool CartesianGeneratorPos::moveTo(geometry_msgs::Pose gm_pose, double time)
+{
+	Frame pose;
+	geometry_msgs::Pose gm_pose_msr;
+	PoseMsgToKDL(gm_pose, pose);
+
 	if(!this->isRunning()){
 		log(Error)<<this->getName()<<" is not running yet."<<endlog();
 		return false;
@@ -135,7 +154,8 @@ bool CartesianGeneratorPos::moveTo(Frame pose, double time) {
 	m_traject_end=pose;
 
 	// get current position
-	m_position_meas_port.read(m_traject_begin);
+	m_position_meas_port.read(gm_pose_msr);
+	PoseMsgToKDL(gm_pose_msr, m_traject_begin);
 	m_velocity_begin_end = diff(m_traject_begin, m_traject_end);
 
 	// Set motion profiles
@@ -156,14 +176,19 @@ bool CartesianGeneratorPos::moveTo(Frame pose, double time) {
 	return true;
 }
 
-void CartesianGeneratorPos::resetPosition() {
-	Frame pose;
+void CartesianGeneratorPos::resetPosition()
+{
+	geometry_msgs::Pose pose;
+	geometry_msgs::Twist twist;
+
 	m_position_meas_port.read(pose);
-	SetToZero(m_velocity_desi_local);
 	m_position_desi_port.write(pose);
-	m_velocity_desi_port.write(m_velocity_desi_local);
+
+	SetToZero(m_velocity_desi_local);
+	TwistKDLToMsg(m_velocity_desi_local, twist);
+	m_velocity_desi_port.write(twist);
+
 	m_is_moving = false;
 }
-}//namespace
 
-
+} //namespace
