@@ -62,6 +62,7 @@ namespace MotionControl{
         bool startHook(){
             if(port_pose_meas.read(m_pose_desi) == RTT::NoData )
                 return false;
+            port_pose_desi.clear();
             return true;
         };
         void updateHook(){
