@@ -52,31 +52,50 @@ namespace MotionControl{
         CartesianImpedanceController(const string& name): RTT::TaskContext(name){
             this->addEventPort("CartesianSensorPosition",port_pose_meas);
             this->addEventPort("CartesianDesiredPosition",port_pose_desi);
+            this->addEventPort("CartesianSensorTwist",port_twist_meas);
+            this->addEventPort("CartesianDesiredTwist",port_twist_desi);
+
             this->addPort("CartesianOutputWrench",port_wrench_out);
 
             this->addProperty("stiffness",m_stiffness).doc("Cartesian Stiffness in tool frame");
-
+            this->addProperty("damping",m_damping).doc("Cartesian Damping in tool frame");
         };
         
     private:
         bool startHook(){
             if(port_pose_meas.read(m_pose_desi) == RTT::NoData )
                 return false;
+
+            port_twist_meas.read(m_twist_desi);
+
+            port_pose_desi.clear();
+            port_twist_desi.clear();
             return true;
         };
         void updateHook(){
+            KDL::Frame pm,pd;
+            KDL::Twist tm,td;
+
             port_pose_meas.read(m_pose_meas);
             port_pose_desi.read(m_pose_desi);
-            KDL::Frame pm,pd;
+            port_twist_meas.read(m_twist_meas);
+            port_twist_desi.read(m_twist_desi);
+
             tf::PoseMsgToKDL(m_pose_meas,pm);
             tf::PoseMsgToKDL(m_pose_desi,pd);
-            KDL::Twist delta = diff(pm.Inverse(),pd.Inverse());
-            m_wrench_out.force.x = m_stiffness.linear.x*(delta.vel.x());
-            m_wrench_out.force.y = m_stiffness.linear.y*(delta.vel.y());
-            m_wrench_out.force.z = m_stiffness.linear.z*(delta.vel.z());
-            m_wrench_out.torque.x = m_stiffness.angular.x*(delta.rot.x());
-            m_wrench_out.torque.y = m_stiffness.angular.y*(delta.rot.y());
-            m_wrench_out.torque.z = m_stiffness.angular.z*(delta.rot.z());
+            tf::TwistMsgToKDL(m_twist_meas,tm);
+            tf::TwistMsgToKDL(m_twist_desi,td);
+            
+            KDL::Twist delta_x = diff(pm.Inverse(),pd.Inverse());
+            KDL::Twist delta_x_dot = diff(tm, td);
+
+            m_wrench_out.force.x = m_stiffness.linear.x*delta_x.vel.x() + m_damping.linear.x*delta_x_dot.vel.x();
+            m_wrench_out.force.y = m_stiffness.linear.y*delta_x.vel.y() + m_damping.linear.y*delta_x_dot.vel.y();
+            m_wrench_out.force.z = m_stiffness.linear.z*delta_x.vel.z() + m_damping.linear.z*delta_x_dot.vel.z();
+            m_wrench_out.torque.x = m_stiffness.angular.x*delta_x.rot.x() + m_damping.angular.x*delta_x_dot.rot.x();;
+            m_wrench_out.torque.y = m_stiffness.angular.y*delta_x.rot.y() + m_damping.angular.y*delta_x_dot.rot.y();;
+            m_wrench_out.torque.z = m_stiffness.angular.z*delta_x.rot.z() + m_damping.angular.z*delta_x_dot.rot.z();;
+
             port_wrench_out.write(m_wrench_out);
         };
         void stopHook(){
@@ -90,11 +109,14 @@ namespace MotionControl{
         };
 
         geometry_msgs::Pose m_pose_meas, m_pose_desi;
+        geometry_msgs::Twist m_twist_meas, m_twist_desi;
         geometry_msgs::Wrench m_wrench_out;
-        geometry_msgs::Twist m_stiffness;
+        geometry_msgs::Twist m_stiffness, m_damping;
         
         RTT::InputPort<geometry_msgs::Pose> port_pose_meas, port_pose_desi;
+        RTT::InputPort<geometry_msgs::Twist> port_twist_meas, port_twist_desi;
         RTT::OutputPort<geometry_msgs::Wrench> port_wrench_out;
+
         
     };
 }//namespace
