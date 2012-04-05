@@ -49,7 +49,7 @@ namespace MotionControl{
     class CartesianImpedanceController : public RTT::TaskContext
     {
     public:
-        CartesianImpedanceController(const string& name): RTT::TaskContext(name){
+        CartesianImpedanceController(const std::string& name): RTT::TaskContext(name){
             this->addEventPort("CartesianSensorPosition",port_pose_meas);
             this->addEventPort("CartesianDesiredPosition",port_pose_desi);
             this->addEventPort("CartesianSensorTwist",port_twist_meas);
