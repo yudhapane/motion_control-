@@ -96,12 +96,6 @@ namespace MotionControl{
 
             fs=ext_ref_mode.read(cur_ext_ref_mode);
 
-            if (cur_ext_ref_mode == false) {
-                m_wrench_out.force.x=0; m_wrench_out.force.y=0; m_wrench_out.force.z=0;
-                m_wrench_out.torque.x=0; m_wrench_out.torque.y=0; m_wrench_out.torque.z=0;
-                goto out_write;
-            }
-
             port_pose_meas.read(m_pose_meas);
             port_pose_desi.read(m_pose_desi);
             port_twist_meas.read(m_twist_meas);
@@ -146,9 +140,14 @@ namespace MotionControl{
                              << " , norm_torque: " << norm_torque << endlog();
             }
 
-	out_write:
+            if (cur_ext_ref_mode == false) {
+                m_wrench_out.force.x=0; m_wrench_out.force.y=0; m_wrench_out.force.z=0;
+                m_wrench_out.torque.x=0; m_wrench_out.torque.y=0; m_wrench_out.torque.z=0;
+            }
+
             port_wrench_out.write(m_wrench_out);
         };
+
         void stopHook(){
             m_wrench_out.force.x=0;
             m_wrench_out.force.y=0;
