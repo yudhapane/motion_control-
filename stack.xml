@@ -5,6 +5,6 @@
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/motion_control</url>
   <depend stack="orocos_kinematics_dynamics" /> <!-- orocos_kdl -->
-  <depend stack="orocos_toolchain_ros" /> <!-- rtt, ocl -->
+  <depend stack="orocos_toolchain" /> <!-- rtt, ocl -->
   <depend stack="ros" />
 </stack>
