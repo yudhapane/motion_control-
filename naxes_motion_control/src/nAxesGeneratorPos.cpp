@@ -235,16 +235,18 @@ namespace MotionControl
         // if previous movement is finished
         if (!is_moving){
             max_duration = 0;
+            // get current position/
+            p_m_port.read( joint_state );
             for (unsigned int i=0; i<num_axes; i++){
                 // Set motion profiles
-                motion_profile[i].SetProfileDuration( p_d.positions[i], position[i], time );
+                motion_profile[i].SetProfileDuration( joint_state.position[i], position[i], time );
                 // Find lengthiest trajectory
                 max_duration = max( max_duration, motion_profile[i].Duration() );
             }
             // Rescale trajectories to maximal duration
             log(Info)<<"Moving to [";
             for(unsigned int i = 0; i < num_axes; i++){
-                motion_profile[i].SetProfileDuration( p_d.positions[i], position[i], max_duration );
+                motion_profile[i].SetProfileDuration( joint_state.position[i], position[i], max_duration );
                 log(Info)<<position[i]<<" ";
             }
             log(Info)<<"] in "<<max_duration<<" seconds."<<endlog();
