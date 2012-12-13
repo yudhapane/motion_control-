@@ -106,7 +106,7 @@ namespace MotionControl{
             tf::TwistMsgToKDL(m_twist_meas,tm);
             tf::TwistMsgToKDL(m_twist_desi,td);
 
-            delta_x = diff(pm.Inverse(),pd.Inverse());
+            delta_x = diff(pm, pd);
             delta_x_dot = diff(tm, td);
 
             m_wrench_out.force.x = m_stiffness.linear.x*delta_x.vel.x() + m_damping.linear.x*delta_x_dot.vel.x();
