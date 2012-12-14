@@ -31,7 +31,7 @@
 #include <sensor_msgs/typekit/Types.hpp>
 #include <motion_control_msgs/typekit/Types.hpp>
 
-namespace motion_control
+namespace MotionControl
 {
     /**
      * This component can control the positions of multiple axes. It

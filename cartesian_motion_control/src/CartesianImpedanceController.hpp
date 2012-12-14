@@ -76,11 +76,14 @@ namespace MotionControl{
 
     private:
         bool startHook(){
-            if(port_pose_meas.read(m_pose_desi) == RTT::NoData )
+			// Starting fails when no data on "CartesianSensorPosition" port
+            if(port_pose_meas.read(m_pose_meas) == RTT::NoData )
                 return false;
-
-            port_twist_meas.read(m_twist_desi);
-
+            port_twist_meas.read(m_twist_meas);
+			// initialize m_pose/twist_desit with 'safe' values
+			m_pose_desi = m_pose_meas;
+			m_twist_desi = m_twist_meas;
+			
             port_pose_desi.clear();
             port_twist_desi.clear();
             return true;

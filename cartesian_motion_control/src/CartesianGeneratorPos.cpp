@@ -30,7 +30,10 @@ namespace MotionControl
 
 CartesianGeneratorPos::CartesianGeneratorPos(string name) :
 	TaskContext(name, PreOperational), m_motion_profile(6,
-			VelocityProfile_Trap(0, 0)), m_is_moving(false)
+			VelocityProfile_Trap(0, 0)), 
+	move_started_event("e_"+name+"_move_started"), 
+	move_finished_event("e_"+name+"_move_finished"),
+	m_is_moving(false)
 {
 	//Creating TaskContext
 
@@ -38,7 +41,7 @@ CartesianGeneratorPos::CartesianGeneratorPos(string name) :
 	this->addPort("CartesianPoseMsr", m_position_meas_port);
 	this->addPort("CartesianPoseDes", m_position_desi_port);
 	this->addPort("CartesianTwistDes", m_velocity_desi_port);
-	this->addPort("moveFinished", m_move_finished_port);
+	this->addPort("events", event_port);
 
 	//Adding Properties
 	this->addProperty("max_vel", m_gm_maximum_velocity).doc(
@@ -107,8 +110,9 @@ void CartesianGeneratorPos::updateHook()
 			// set end position
 			m_position_desi_local = m_traject_end;
 			SetToZero(m_velocity_desi_local);
-			m_move_finished_port.write(true);
 			m_is_moving = false;
+			// send move_finished_event (once)
+            event_port.write(move_finished_event);
 		} else {
 			// position
 			m_velocity_delta = Twist( Vector( m_motion_profile[0].Pos(m_time_passed),
@@ -125,6 +129,7 @@ void CartesianGeneratorPos::updateHook()
 			// velocity
 			for (unsigned int i = 0; i < 6; i++)
 				m_velocity_desi_local(i) = m_motion_profile[i].Vel(m_time_passed);
+
 		}
 
 		// convert to geometry msgs and send.
@@ -173,6 +178,9 @@ bool CartesianGeneratorPos::moveTo(geometry_msgs::Pose gm_pose, double time)
 	m_time_passed = 0;
 
 	m_is_moving = true;
+	// send move_started_event )
+	event_port.write(move_started_event);
+
 	return true;
 }
 

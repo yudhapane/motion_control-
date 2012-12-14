@@ -79,6 +79,8 @@ namespace MotionControl
       double                                      m_max_duration;
 
       bool                                        m_is_moving,m_once;
+      std::string								  move_started_event; 
+      std::string								  move_finished_event;  
 
     protected:
       /// Dataport containing the current measured end-effector
@@ -94,7 +96,7 @@ namespace MotionControl
       /// MotionControl::CartesianControllerVel
       RTT::OutputPort< geometry_msgs::Twist >  m_velocity_desi_port;
 
-      RTT::OutputPort<bool> m_move_finished_port;
+      RTT::OutputPort<std::string> event_port;
 
   }; // class
 } //namespace

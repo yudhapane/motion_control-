@@ -34,7 +34,7 @@
 
 #include <trajectory_msgs/typekit/Types.hpp>
 
-namespace motion_control
+namespace MotionControl
 {
     /**
      * This component generates paths between the current positions
@@ -163,7 +163,7 @@ namespace motion_control
         /// DataPort containing the current desired velocity.
         RTT::OutputPort< motion_control_msgs::JointVelocities > v_d_port;
         /// DataPort that will be written to when the motion is finished
-        RTT::OutputPort <std::string > move_finished_port;
+        RTT::OutputPort <std::string > event_port;
 
 
     private:
@@ -173,7 +173,9 @@ namespace motion_control
         double                                    max_duration;
 
         bool                                      is_moving;
-        std::string                               finished_event;
+        std::string								  move_started_event; 
+        std::string								  move_finished_event;        
+
     protected:
         /// Vector with the maximum velocity of each axis
         std::vector<double>      v_max_prop;

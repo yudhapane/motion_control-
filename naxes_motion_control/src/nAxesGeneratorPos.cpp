@@ -22,7 +22,7 @@
 #include <rtt/Component.hpp>
 #include <rtt/os/MutexLock.hpp>
 
-namespace motion_control
+namespace MotionControl
 {
     using namespace RTT;
     using namespace KDL;
@@ -31,8 +31,12 @@ namespace motion_control
 
     nAxesGeneratorPos::nAxesGeneratorPos(const string& name)
       : TaskContext(name,PreOperational),
-	finished_event(name+"move_finished"), traj_finished_event(name+"traj_finished"), is_moving(false), isTrajMoving(false), trajIndex(0)
-    {
+	move_started_event("e_"+name+"_move_started"), 
+	move_finished_event("e_"+name+"_move_finished"), traj_finished_event("e_"+name+"_traj_finished"), 
+	
+	is_moving(false), isTrajMoving(false), trajIndex(0)
+
+{
         //Creating TaskContext
 
         //Adding properties
@@ -45,7 +49,7 @@ namespace motion_control
         this->addPort("nAxesSensorPosition"  , p_m_port );
         this->addPort("nAxesDesiredPosition" , p_d_port );
         this->addPort("nAxesDesiredVelocity" , v_d_port );
-        this->addPort("moveFinished", move_finished_port);
+        this->addPort("events", event_port);
         this->addEventPort("nAxesJointPosition"  , joint_endpose_port, boost::bind(&nAxesGeneratorPos::moveToOnPort, this));
         this->addEventPort("nAxesJointPositionDelayed"  , joint_endpose_delayed_port, boost::bind(&nAxesGeneratorPos::moveToDelayedOnPort, this));
 
@@ -106,7 +110,7 @@ namespace motion_control
         p_d_port.setDataSample( p_d );
         v_d.velocities.assign(num_axes,0);
         v_d_port.setDataSample( v_d );
-        move_finished_port.setDataSample(finished_event);
+        event_port.setDataSample(move_finished_event);
         return true;
     }
 
@@ -146,9 +150,10 @@ namespace motion_control
                 for (unsigned int i=0; i<num_axes; i++){
                     p_d.positions[i] = motion_profile[i].Pos( max_duration );
                     v_d.velocities[i] = motion_profile[i].Vel( max_duration );
-                    is_moving = false;
-                    move_finished_port.write(finished_event);
                 }
+                is_moving = false;
+				// send move_finished_event (once)
+                event_port.write(move_finished_event);
                 if (isTrajMoving == true) {
                 	this->moveTraject();
                 }
@@ -208,7 +213,7 @@ namespace motion_control
     		this->moveTo(traject.points[trajIndex].positions, 0.1);
     	}
     	else {
-    		move_finished_port.write(traj_finished_event);
+    		event_port.write(traj_finished_event);
     		isTrajMoving = false;
     	}
 		return true;
@@ -249,7 +254,8 @@ namespace motion_control
             time_passed = 0;
 
             is_moving = true;
-
+			// send move_started_event 
+			event_port.write(move_started_event);
 
             return true;
         }
@@ -326,4 +332,4 @@ namespace motion_control
     }
 }//namespace
 
-ORO_CREATE_COMPONENT( motion_control::nAxesGeneratorPos )
+ORO_CREATE_COMPONENT( MotionControl::nAxesGeneratorPos )

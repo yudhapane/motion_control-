@@ -22,7 +22,7 @@
 #include "nAxesControllerPos.hpp"
 #include <rtt/Component.hpp>
 
-namespace motion_control
+namespace MotionControl
 {
 
     using namespace RTT;
@@ -134,4 +134,4 @@ namespace motion_control
 
 }//namespace
 
-ORO_CREATE_COMPONENT( motion_control::nAxesControllerPos )
+ORO_CREATE_COMPONENT( MotionControl::nAxesControllerPos )
