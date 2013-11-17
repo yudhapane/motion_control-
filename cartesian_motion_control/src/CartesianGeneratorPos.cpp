@@ -65,8 +65,24 @@ CartesianGeneratorPos::~CartesianGeneratorPos() { }
 
 bool CartesianGeneratorPos::configureHook()
 {
-	TwistMsgToKDL(m_gm_maximum_velocity, m_maximum_velocity);
-	TwistMsgToKDL(m_gm_maximum_acceleration, m_maximum_acceleration);
+	twistMsgToKDL(m_gm_maximum_velocity, m_maximum_velocity);
+	twistMsgToKDL(m_gm_maximum_acceleration, m_maximum_acceleration);
+
+	//check that there is no zero value
+
+
+	for (unsigned int i = 0; i < 3; i++) {
+		if(m_maximum_velocity.vel[i]==0||m_maximum_acceleration.vel[i]==0||
+				m_maximum_velocity.rot[i]==0||m_maximum_acceleration.rot[i]==0)
+		{
+			Logger::In in(this->getName());
+			log(Error) << "some of the maximum accelerations or velocity property have been not set" << endlog();
+			log(Error) << "m_maximum_velocity\n" << m_gm_maximum_velocity<<endlog();
+			log(Error) << "m_maximum_acceleration\n" <<m_gm_maximum_acceleration <<endlog();
+			return false;
+		}
+	}
+
 
 	for (unsigned int i = 0; i < 3; i++) {
 		m_motion_profile[i].SetMax(m_maximum_velocity.vel[i],
