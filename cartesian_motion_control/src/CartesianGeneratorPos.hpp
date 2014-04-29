@@ -32,6 +32,8 @@
 #include <kdl/kdl.hpp>
 #include <kdl/frames.hpp>
 
+#include <geometry_msgs/Vector3.h>
+
 namespace MotionControl
 {
     /**
@@ -62,13 +64,13 @@ namespace MotionControl
         virtual void cleanupHook();
 
     private:
-      bool moveTo(KDL::Frame pose, double time=0);
+      bool moveTo(double xPos=0 , double yPos=0 , double zPos=0 ,  double time=0);
       void resetPosition();
 
       KDL::Frame                        m_traject_end, m_traject_begin;
       KDL::Frame                        m_position_desi_local;
       KDL::Twist                        m_velocity_desi_local, m_velocity_begin_end, m_velocity_delta;
-      KDL::Twist                        m_maximum_velocity, m_maximum_acceleration;
+      //KDL::Twist                        m_maximum_velocity, m_maximum_acceleration;
 
       std::vector<KDL::VelocityProfile_Trap>      m_motion_profile;
       RTT::os::TimeService::ticks                     m_time_begin;
@@ -77,21 +79,31 @@ namespace MotionControl
 
       bool                                        m_is_moving,m_once;
 
+      double max_acceleration;
+      double max_velocity;
+
+      KDL::Vector Pose;	
+      geometry_msgs::Vector3 Pose_out; 
+
+	int ros_counter;
+	int ds_to_ros;
+
     protected:
       /// Dataport containing the current measured end-effector
       /// frame, shared with MotionControl::CartesianSensor
-      RTT::InputPort< KDL::Frame >   m_position_meas_port;
+      //RTT::InputPort< KDL::Frame >   m_position_meas_port;
+      RTT::InputPort<KDL::Vector>   m_position_meas_port;
 
       /// Dataport containing the current desired end-effector
       /// frame, shared with MotionControl::CartesianControllerPos,
       /// MotionControl::CartesianControllerPosVel
-      RTT::OutputPort< KDL::Frame >  m_position_desi_port;
+      RTT::OutputPort< geometry_msgs::Vector3 >  m_position_desi_port;
       /// Dataport containing the current desired end-effector
       /// twist, shared with MotionControl::CartesianControllerPosVel,
       /// MotionControl::CartesianControllerVel
-      RTT::OutputPort< KDL::Twist >  m_velocity_desi_port;
+      RTT::OutputPort< geometry_msgs::Vector3 >  m_position_ros_port;
 
-      RTT::OutputPort<bool> m_move_finished_port;
+      RTT::OutputPort<bool> m_move_Active_port;
 
   }; // class
 } //namespace

@@ -31,20 +31,20 @@ using namespace KDL;
 using namespace std;
 
 CartesianGeneratorPos::CartesianGeneratorPos(string name) :
-	TaskContext(name, PreOperational), m_motion_profile(6,
+	TaskContext(name, PreOperational), m_motion_profile(3,
 			VelocityProfile_Trap(0, 0)), m_is_moving(false) {
 	//Creating TaskContext
 
 	//Adding Ports
 	this->addPort("CartesianPoseMsr", m_position_meas_port);
 	this->addPort("CartesianPoseDes", m_position_desi_port);
-	this->addPort("CartesianTwistDes", m_velocity_desi_port);
-	this->addPort("moveFinished", m_move_finished_port);
+	this->addPort("CartesianPoseDesRos", m_position_ros_port);
+	this->addPort("MoveActive", m_move_Active_port);
 
 	//Adding Properties
-	this->addProperty("max_vel", m_maximum_velocity).doc(
+	this->addProperty("max_vel", max_velocity).doc(
 			"Maximum Velocity in Trajectory");
-	this->addProperty("max_acc", m_maximum_acceleration).doc(
+	this->addProperty("max_acc", max_acceleration).doc(
 			"Maximum Acceleration in Trajectory");
 
 	//Adding Commands
@@ -63,34 +63,58 @@ CartesianGeneratorPos::~CartesianGeneratorPos() {
 }
 
 bool CartesianGeneratorPos::configureHook() {
+/*	m_maximum_acceleration = Twist(Vector(max_acceleration,max_acceleration,max_acceleration),Vector			
+	(max_acceleration,max_acceleration,max_acceleration));
+
+	m_maximum_velocity = Twist(Vector(max_velocity,max_velocity,max_velocity),Vector(max_velocity,max_velocity,max_velocity));
+
 	for (unsigned int i = 0; i < 3; i++) {
-		m_motion_profile[i].SetMax(m_maximum_velocity.vel[i],
-				m_maximum_acceleration.vel[i]);
-		m_motion_profile[i + 3].SetMax(m_maximum_velocity.rot[i],
-				m_maximum_acceleration.rot[i]);
+		m_motion_profile[i].SetMax(5,5); //(m_maximum_velocity.vel[i], m_maximum_acceleration.vel[i]);
+		//m_motion_profile[i + 3].SetMax(m_maximum_velocity.rot[i],
+		//		m_maximum_acceleration.rot[i]);
 	}
+*/
+
+	for (unsigned int i = 0; i < 3; i++) {
+		m_motion_profile[i].SetMax(max_velocity,max_acceleration);
+		}
+
+
+	ds_to_ros = 10;
 	return true;
+
 
 }
 
 bool CartesianGeneratorPos::startHook() {
 	m_is_moving = false;
 	//initialize
-	Frame starting_pose;
+	KDL::Vector starting_pose;
 	if(m_position_meas_port.read(starting_pose)==NoData){
 		log(Error)<<this->getName()<<" cannot start if "<< m_position_meas_port.getName()<<" has no input data."<<endlog();
 		return false;
 	}
-	m_position_desi_port.write(starting_pose);
-	Twist starting_twist = Twist::Zero();
-	m_velocity_desi_port.write(starting_twist);
+
+	Pose_out.x = starting_pose(0);
+	Pose_out.y = starting_pose(1);
+	Pose_out.z = starting_pose(2);
+
+	for (unsigned int i = 0; i < 3; i++) {
+		m_motion_profile[i].SetMax(max_velocity, max_acceleration); //(m_maximum_velocity.vel[i], m_maximum_acceleration.vel[i]);
+		//m_motion_profile[i + 3].SetMax(m_maximum_velocity.rot[i],
+		//		m_maximum_acceleration.rot[i]);
+	}
+
+	m_position_desi_port.write(Pose_out);
+	//Twist starting_twist = Twist::Zero();
+	m_position_ros_port.write(Pose_out);
 	return true;
 }
 
 void CartesianGeneratorPos::updateHook() {
 	if (m_is_moving) {
 		m_time_passed = os::TimeService::Instance()->secondsSince(m_time_begin);
-		if (m_time_passed > m_max_duration) {
+		/*if (m_time_passed > m_max_duration) {
 			// set end position
 			m_position_desi_local = m_traject_end;
 			SetToZero(m_velocity_desi_local);
@@ -113,10 +137,49 @@ void CartesianGeneratorPos::updateHook() {
 				m_velocity_desi_local(i) = m_motion_profile[i].Vel(
 						m_time_passed);
 		}
+		
+		Pose_out.x=m_position_desi_local.p(0);
+		Pose_out.y=m_position_desi_local.p(1);
+		Pose_out.z=m_position_desi_local.p(1);
 
-		m_position_desi_port.write(m_position_desi_local);
+		m_position_desi_port.write(Pose_out);
+		//m_position_desi_port.write(m_position_desi_local);
 		m_velocity_desi_port.write(m_velocity_desi_local);
+		*/
+		//only 3D movement
+		
+		if (m_time_passed > m_max_duration) {
+			// set end position
+			m_position_desi_local = m_traject_end;
+			SetToZero(m_velocity_desi_local);
+			//m_move_finished_port.write(true);
+			m_is_moving = false;
+		} else {
+			// position
+			m_position_desi_local.p(0) = m_motion_profile[0].Pos(m_time_passed)+ m_traject_begin.p(0);
+			m_position_desi_local.p(1) = m_motion_profile[1].Pos(m_time_passed)+ m_traject_begin.p(1);
+			m_position_desi_local.p(2) = m_motion_profile[2].Pos(m_time_passed)+ m_traject_begin.p(2);
+
+		}
+
+		Pose_out.x=m_position_desi_local.p(0);
+		Pose_out.y=m_position_desi_local.p(1);
+		Pose_out.z=m_position_desi_local.p(2);
+
+		m_position_desi_port.write(Pose_out);
+
+	// Writing to Ros (i.e. at a lower rate)
+	if (ros_counter >= ds_to_ros){
+		m_position_ros_port.write(Pose_out);
+		ros_counter = 0;
 	}
+	else
+		ros_counter++;
+
+
+	}
+
+	m_move_Active_port.write(m_is_moving);
 }
 
 void CartesianGeneratorPos::stopHook() {
@@ -125,29 +188,40 @@ void CartesianGeneratorPos::stopHook() {
 void CartesianGeneratorPos::cleanupHook() {
 }
 
-bool CartesianGeneratorPos::moveTo(Frame pose, double time) {
+bool CartesianGeneratorPos::moveTo(double xPos, double yPos, double zPos, double time) {
+	
+	Frame pose_in(Vector(xPos,yPos,zPos)); // creates an identity matrix
+	
+
 	if(!this->isRunning()){
 		log(Error)<<this->getName()<<" is not running yet."<<endlog();
 		return false;
 	}
 	m_max_duration = 0;
 
-	m_traject_end=pose;
+	m_traject_end=pose_in;
 
 	// get current position
-	m_position_meas_port.read(m_traject_begin);
+	
+
+	m_position_meas_port.read(Pose);
+
+	m_traject_begin = Frame(Pose);
+
+
 	m_velocity_begin_end = diff(m_traject_begin, m_traject_end);
 
 	// Set motion profiles
-	for (unsigned int i = 0; i < 6; i++) {
+	for (unsigned int i = 0; i < 3; i++) {
 		m_motion_profile[i].SetProfileDuration(0, m_velocity_begin_end(i), time);
 		m_max_duration = max(m_max_duration, m_motion_profile[i].Duration());
 	}
 
-	// Rescale trajectories to maximal duration
-	for (unsigned int i = 0; i < 6; i++)
-		m_motion_profile[i].SetProfileDuration(0, m_velocity_begin_end(i),
-				m_max_duration);
+	// Rescale trajectories to maximal duration, SetProfileDuration-function is intended 
+	//for trajectories below max speed and may cause the time to exceed the input for very fast movements
+
+	for (unsigned int i = 0; i < 3; i++)
+		m_motion_profile[i].SetProfileDuration(0, m_velocity_begin_end(i),m_max_duration);
 
 	m_time_begin = os::TimeService::Instance()->getTicks();
 	m_time_passed = 0;
@@ -157,11 +231,19 @@ bool CartesianGeneratorPos::moveTo(Frame pose, double time) {
 }
 
 void CartesianGeneratorPos::resetPosition() {
-	Frame pose;
-	m_position_meas_port.read(pose);
+	//Frame pose;
+	//m_position_meas_port.read(pose);
+	m_position_meas_port.read(Pose);
+//
+	//pose = Frame(Pose);
 	SetToZero(m_velocity_desi_local);
-	m_position_desi_port.write(pose);
-	m_velocity_desi_port.write(m_velocity_desi_local);
+
+	Pose_out.x=Pose(0);
+	Pose_out.y=Pose(1);
+	Pose_out.z=Pose(2);
+
+	m_position_desi_port.write(Pose_out);
+	m_position_ros_port.write(Pose_out);
 	m_is_moving = false;
 }
 }//namespace
