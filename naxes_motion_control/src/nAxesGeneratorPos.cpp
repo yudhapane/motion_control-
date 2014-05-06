@@ -49,6 +49,11 @@ namespace MotionControl
         this->addPort("nAxesSensorPosition"  , p_m_port );
         this->addPort("nAxesDesiredPosition" , p_d_port );
         this->addPort("nAxesDesiredVelocity" , v_d_port );
+
+	
+	this->addPort("nAxesDesiredPosition_std_outport" , nAxesDesiredPosition_std_outport );
+        this->addPort("nAxesDesiredVelocity_std_outport" , nAxesDesiredVelocity_std_outport );
+
         this->addPort("events", event_port);
         this->addEventPort("nAxesJointPosition"  , joint_endpose_port, boost::bind(&nAxesGeneratorPos::moveToOnPort, this));
         this->addEventPort("nAxesJointPositionDelayed"  , joint_endpose_delayed_port, boost::bind(&nAxesGeneratorPos::moveToDelayedOnPort, this));
@@ -60,6 +65,8 @@ namespace MotionControl
 				.arg("time", "minimum time to complete trajectory");
         this->addOperation( "resetPosition", &MyType::resetPosition, this )
 				.doc("Reset generator position");
+        this->addOperation( "setPositions", &MyType::setPositions, this )
+				.doc("Cause a step");
         this->addOperation( "pause", &MyType::pause, this ).doc("Pause motion");
         this->addOperation( "moveToDelayed", &MyType::moveToDelayed, this)
 				.doc("Set the position setpoint")
@@ -108,8 +115,12 @@ namespace MotionControl
         //Initialise output ports:
         p_d.positions.assign(num_axes,0);
         p_d_port.setDataSample( p_d );
-        v_d.velocities.assign(num_axes,0);
+        v_d.velocities.assign(num_axes,0);       
         v_d_port.setDataSample( v_d );
+
+	nAxesDesiredPosition_std_outport.setDataSample(p_d.positions);
+	nAxesDesiredVelocity_std_outport.setDataSample(v_d.velocities);	
+
         event_port.setDataSample(move_finished_event);
         return true;
     }
@@ -134,6 +145,8 @@ namespace MotionControl
 
         p_d.positions = joint_state.position;
         p_d_port.write( p_d );
+	nAxesDesiredPosition_std_outport.write(p_d.positions);
+	
         is_moving = false;
 
         return true;
@@ -165,6 +178,9 @@ namespace MotionControl
             }
             p_d_port.write( p_d );
             v_d_port.write( v_d );
+	    nAxesDesiredPosition_std_outport.write(p_d.positions);
+	    nAxesDesiredVelocity_std_outport.write(v_d.velocities);	
+
         }
     }
 
@@ -310,6 +326,23 @@ namespace MotionControl
         }
 
     }
+    bool nAxesGeneratorPos::setPositions(std::vector<double> v)
+    {
+        if (v.size()!=num_axes) return false;
+
+        for(unsigned int i = 0; i < num_axes; i++)
+	{
+            v_d.velocities[i] = 0;
+	    p_d.positions[i]=v[i];
+	}
+        p_d_port.write( p_d );
+        v_d_port.write( v_d );
+	nAxesDesiredPosition_std_outport.write(p_d.positions);
+	nAxesDesiredVelocity_std_outport.write(v_d.velocities);	
+        is_moving = false;
+        isTrajMoving = false;
+	return true;
+    }
 
 
     void nAxesGeneratorPos::resetPosition()
@@ -320,6 +353,8 @@ namespace MotionControl
         p_d.positions=joint_state.position;
         p_d_port.write( p_d );
         v_d_port.write( v_d );
+	nAxesDesiredPosition_std_outport.write(p_d.positions);
+	nAxesDesiredVelocity_std_outport.write(v_d.velocities);	
         is_moving = false;
         isTrajMoving = false;
     }
