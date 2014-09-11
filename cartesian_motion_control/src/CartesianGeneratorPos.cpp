@@ -40,7 +40,7 @@ CartesianGeneratorPos::CartesianGeneratorPos(string name) :
 	this->addPort("CartesianPoseDes", m_position_desi_port);
 	this->addPort("CartesianPoseDesRos", m_position_ros_port);
 	this->addPort("MoveActive", m_move_Active_port);
-
+	//his->addPort("ControllerState_in", ControllerState_in);
 	//Adding Properties
 	this->addProperty("max_vel", max_velocity).doc(
 			"Maximum Velocity in Trajectory");
@@ -87,6 +87,8 @@ bool CartesianGeneratorPos::configureHook() {
 }
 
 bool CartesianGeneratorPos::startHook() {
+	int ControlState;
+
 	m_is_moving = false;
 	//initialize
 	KDL::Vector starting_pose;
@@ -98,6 +100,7 @@ bool CartesianGeneratorPos::startHook() {
 	Pose_out.x = starting_pose(0);
 	Pose_out.y = starting_pose(1);
 	Pose_out.z = starting_pose(2);
+
 
 	for (unsigned int i = 0; i < 3; i++) {
 		m_motion_profile[i].SetMax(max_velocity, max_acceleration); //(m_maximum_velocity.vel[i], m_maximum_acceleration.vel[i]);
@@ -112,71 +115,49 @@ bool CartesianGeneratorPos::startHook() {
 }
 
 void CartesianGeneratorPos::updateHook() {
+	//int ControlState;
+	//ControlState = 1 ;
+
+
 	if (m_is_moving) {
-		m_time_passed = os::TimeService::Instance()->secondsSince(m_time_begin);
-		/*if (m_time_passed > m_max_duration) {
-			// set end position
-			m_position_desi_local = m_traject_end;
-			SetToZero(m_velocity_desi_local);
-			m_move_finished_port.write(true);
-			m_is_moving = false;
-		} else {
-			// position
-			m_velocity_delta = Twist(Vector(m_motion_profile[0].Pos(
-					m_time_passed), m_motion_profile[1].Pos(m_time_passed),
-					m_motion_profile[2].Pos(m_time_passed)), Vector(
-					m_motion_profile[3].Pos(m_time_passed),
-					m_motion_profile[4].Pos(m_time_passed),
-					m_motion_profile[5].Pos(m_time_passed)));
-			m_position_desi_local = Frame(m_traject_begin.M * Rot(
-					m_traject_begin.M.Inverse(m_velocity_delta.rot)),
-					m_traject_begin.p + m_velocity_delta.vel);
-
-			// velocity
-			for (unsigned int i = 0; i < 6; i++)
-				m_velocity_desi_local(i) = m_motion_profile[i].Vel(
-						m_time_passed);
-		}
+	//ControllerState_in.read(ControlState);		
 		
-		Pose_out.x=m_position_desi_local.p(0);
-		Pose_out.y=m_position_desi_local.p(1);
-		Pose_out.z=m_position_desi_local.p(1);
+		//if (ControlState == 1){
 
-		m_position_desi_port.write(Pose_out);
-		//m_position_desi_port.write(m_position_desi_local);
-		m_velocity_desi_port.write(m_velocity_desi_local);
-		*/
-		//only 3D movement
+			m_time_passed = os::TimeService::Instance()->secondsSince(m_time_begin);
 		
-		if (m_time_passed > m_max_duration) {
-			// set end position
-			m_position_desi_local = m_traject_end;
-			SetToZero(m_velocity_desi_local);
-			//m_move_finished_port.write(true);
-			m_is_moving = false;
-		} else {
-			// position
-			m_position_desi_local.p(0) = m_motion_profile[0].Pos(m_time_passed)+ m_traject_begin.p(0);
-			m_position_desi_local.p(1) = m_motion_profile[1].Pos(m_time_passed)+ m_traject_begin.p(1);
-			m_position_desi_local.p(2) = m_motion_profile[2].Pos(m_time_passed)+ m_traject_begin.p(2);
+			//only 3D movement
+		
+			if (m_time_passed > m_max_duration) {
+				// set end position
+				m_position_desi_local = m_traject_end;
+				SetToZero(m_velocity_desi_local);
+				//m_move_finished_port.write(true);
+				m_is_moving = false;
+				resetPosition();
+			} else {
+				// position
+				m_position_desi_local.p(0) = m_motion_profile[0].Pos(m_time_passed)+ m_traject_begin.p(0);
+				m_position_desi_local.p(1) = m_motion_profile[1].Pos(m_time_passed)+ m_traject_begin.p(1);
+				m_position_desi_local.p(2) = m_motion_profile[2].Pos(m_time_passed)+ m_traject_begin.p(2);
 
-		}
+			}
 
-		Pose_out.x=m_position_desi_local.p(0);
-		Pose_out.y=m_position_desi_local.p(1);
-		Pose_out.z=m_position_desi_local.p(2);
+			Pose_out.x= m_position_desi_local.p(0);
+			Pose_out.y=m_position_desi_local.p(1);
+			Pose_out.z=m_position_desi_local.p(2);
 
-		m_position_desi_port.write(Pose_out);
+			m_position_desi_port.write(Pose_out);
 
-	// Writing to Ros (i.e. at a lower rate)
-	if (ros_counter >= ds_to_ros){
-		m_position_ros_port.write(Pose_out);
-		ros_counter = 0;
-	}
-	else
-		ros_counter++;
+			// Writing to Ros (i.e. at a lower rate)
+			if (ros_counter >= ds_to_ros){
+			m_position_ros_port.write(Pose_out);
+			ros_counter = 0;
+			}
+			else
+			ros_counter++;
 
-
+		//}
 	}
 
 	m_move_Active_port.write(m_is_moving);

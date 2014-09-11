@@ -104,7 +104,7 @@ namespace MotionControl
       RTT::OutputPort< geometry_msgs::Vector3 >  m_position_ros_port;
 
       RTT::OutputPort<bool> m_move_Active_port;
-
+      //RTT::InputPort<int> ControllerState_in;
   }; // class
 } //namespace
 
