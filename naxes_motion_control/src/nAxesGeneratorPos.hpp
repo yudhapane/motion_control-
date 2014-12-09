@@ -131,6 +131,8 @@ namespace MotionControl
          * current measured position and the desired velocity to zero
          */
         void resetPosition();
+        bool setPositions(std::vector<double> v);
+
         void pause();
         void moveToOnPort();
         void moveToDelayedOnPort();
@@ -164,6 +166,11 @@ namespace MotionControl
         RTT::OutputPort< motion_control_msgs::JointVelocities > v_d_port;
         /// DataPort that will be written to when the motion is finished
         RTT::OutputPort <std::string > event_port;
+
+
+	RTT::OutputPort <std::vector<double> > nAxesDesiredPosition_std_outport;
+	RTT::OutputPort <std::vector<double> > nAxesDesiredVelocity_std_outport;
+	
 
 
     private:
