@@ -30,10 +30,10 @@ find_package(OROCOS-RTT REQUIRED ${RTT_HINTS})
 # documentation.
 include(${OROCOS-RTT_USE_FILE_PATH}/UseOROCOS-RTT.cmake)
 
-orocos_component(kinematic_converter src/kinematic_converter.hpp src/kinematic_converter.cpp)
-orocos_component(CartesianControllerPos src/CartesianControllerPos.cpp src/CartesianControllerPos.hpp)
-orocos_component(CartesianControllerVel src/CartesianControllerVel.cpp src/CartesianControllerVel.hpp)
-orocos_component(CartesianControllerPosVel src/CartesianControllerPosVel.cpp src/CartesianControllerPosVel.hpp)
+#orocos_component(kinematic_converter src/kinematic_converter.hpp src/kinematic_converter.cpp)
+#orocos_component(CartesianControllerPos src/CartesianControllerPos.cpp src/CartesianControllerPos.hpp)
+#orocos_component(CartesianControllerVel src/CartesianControllerVel.cpp src/CartesianControllerVel.hpp)
+#orocos_component(CartesianControllerPosVel src/CartesianControllerPosVel.cpp src/CartesianControllerPosVel.hpp)
 orocos_component(CartesianGeneratorPos  src/CartesianGeneratorPos.cpp src/CartesianGeneratorPos.hpp)
 
 #
@@ -82,6 +82,7 @@ orocos_component(CartesianGeneratorPos  src/CartesianGeneratorPos.cpp src/Cartes
 # Installs in the include/orocos/motion_control/ directory
 #
 orocos_install_headers( src/CartesianControllerPos.hpp ) # ...you may add multiple header files
+orocos_install_headers( src/CartesianGeneratorPos.hpp ) # ...you may add multiple header files
 #
 # You may add multiple orocos_install_headers statements.
 
