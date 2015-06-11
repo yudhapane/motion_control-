@@ -32,7 +32,7 @@
 #include <kdl/kdl.hpp>
 #include <kdl/frames.hpp>
 
-#include <geometry_msgs/Vector3.h>
+#include <geometry_msgs/typekit/Vector3.h>
 
 namespace MotionControl
 {

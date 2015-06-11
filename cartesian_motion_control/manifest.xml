@@ -8,6 +8,6 @@
     <depend package="rtt" />
     <depend package="ocl" />
     <depend package="kdl" />
-    <depend package="geometry_msgs" />
+    <depend package="rtt_geometry_msgs" />
 </package>
 
