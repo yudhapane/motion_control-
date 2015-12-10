@@ -10,10 +10,10 @@
 # Creates a component library libcartesian_motion_control-<target>.so
 # and installs in the directory lib/orocos/cartesian_motion_control/
 #
-orocos_component(nAxesControllerPos src/nAxesControllerPos.cpp)
-target_link_libraries(CartesianImpedanceController ${catkin_LIBRARIES} ${USE_OROCOS_LIBRARIES} ${orocos_kdl_LIBRARIES})
-orocos_component(nAxesGeneratorPos src/nAxesGeneratorPos.cpp)
-target_link_libraries(CartesianImpedanceController ${catkin_LIBRARIES} ${USE_OROCOS_LIBRARIES} ${orocos_kdl_LIBRARIES})
+orocos_component(nAxesControllerPos nAxesControllerPos.cpp)
+target_link_libraries(nAxesControllerPos ${catkin_LIBRARIES} ${USE_OROCOS_LIBRARIES} ${orocos_kdl_LIBRARIES})
+orocos_component(nAxesGeneratorPos nAxesGeneratorPos.cpp)
+target_link_libraries(nAxesGeneratorPos ${catkin_LIBRARIES} ${USE_OROCOS_LIBRARIES} ${orocos_kdl_LIBRARIES})
 #
 # You may add multiple orocos_component statements.
 
