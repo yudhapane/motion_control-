@@ -23,7 +23,7 @@
 using namespace RTT;
 using namespace KDL;
 using namespace std;
-using namespace tf;
+
 
 namespace MotionControl
 {
@@ -34,7 +34,8 @@ CartesianGeneratorPos::CartesianGeneratorPos(string name) :
 	move_started_event("e_"+name+"_move_started"),
 	move_finished_event("e_"+name+"_move_finished"),
 	pose_reset_event("e_"+name+"_pose_reset"),
-	m_is_moving(false)
+	m_is_moving(false),
+	m_time_passed(0)
 {
 	//Creating TaskContext
 
@@ -44,36 +45,19 @@ CartesianGeneratorPos::CartesianGeneratorPos(string name) :
 	this->addPort("CartesianTwistDes", m_velocity_desi_port);
 	this->addPort("events", event_port);
 
+
+
 	//Adding Properties
-	this->addProperty("max_vel", m_gm_maximum_velocity).doc(
+	this->addProperty("max_vel", m_maximum_velocity).doc(
 			"Maximum Velocity in Trajectory");
-	this->addProperty("max_acc", m_gm_maximum_acceleration).doc(
+	this->addProperty("max_acc", m_maximum_acceleration).doc(
 			"Maximum Acceleration in Trajectory");
 
-	//Adding Commands
+	//Adding Operations
 	this->addOperation("moveTo", &CartesianGeneratorPos::moveTo, this,
 			OwnThread) .doc("Set the position setpoint") .arg("setpoint",
 			"position setpoint for end effector") .arg("time",
 			"minimum time to execute trajectory");
-
-	this->addOperation("moveToKDL", &CartesianGeneratorPos::moveToKDL, this,
-			OwnThread) .doc("Set the position setpoint") .arg("setpoint",
-			"position setpoint for end effector") .arg("time",
-			"minimum time to execute trajectory");
-
-	this->addOperation("moveToWithOffset", &CartesianGeneratorPos::moveToWithOffset, this,
-			OwnThread) .doc("Set the position setpoint (DEPRECATED)")
-			.arg("offset pose","initial reference position")
-			.arg("delta pose","delta pose, expressed in offset pose")
-			.arg("time","minimum time to execute trajectory");
-
-	this->addOperation("moveToWithOffsetKDL", &CartesianGeneratorPos::moveToWithOffsetKDL, this,
-			OwnThread) .doc("Set the position setpoint")
-			.arg("offset pose","initial reference position KDL")
-			.arg("delta pose","delta pose, expressed in offset pose")
-			.arg("time","minimum time to execute trajectory");
-
-	//Adding Methods
 	this->addOperation("resetPosition", &CartesianGeneratorPos::resetPosition,
 			this, OwnThread).doc("Resets generator's position");
 	this->addOperation("setPose", &CartesianGeneratorPos::setPose,
@@ -85,9 +69,6 @@ CartesianGeneratorPos::~CartesianGeneratorPos() { }
 
 bool CartesianGeneratorPos::configureHook()
 {
-	twistMsgToKDL(m_gm_maximum_velocity, m_maximum_velocity);
-	twistMsgToKDL(m_gm_maximum_acceleration, m_maximum_acceleration);
-
 	for (unsigned int i = 0; i < 3; i++) {
 		m_motion_profile[i].SetMax(m_maximum_velocity.vel[i],
 				m_maximum_acceleration.vel[i]);
@@ -95,34 +76,30 @@ bool CartesianGeneratorPos::configureHook()
 				m_maximum_acceleration.rot[i]);
 	}
 	return true;
-
 }
 
 bool CartesianGeneratorPos::startHook()
 {
 	m_is_moving = false;
-	//initialize
-	geometry_msgs::Pose gm_starting_pose; Frame starting_pose;
-	geometry_msgs::Twist gm_starting_twist; Twist starting_twist;
 
-	if(m_position_meas_port.read(gm_starting_pose)==NoData){
+	Frame starting_pose;
+	Twist starting_twist= Twist::Zero();
+
+	if(m_position_meas_port.read(starting_pose)==NoData){
 		log(Error) << this->getName() << " cannot start if " <<
 			m_position_meas_port.getName()<<" has no input data."<<endlog();
 		return false;
 	}
 
-	m_position_desi_port.write(gm_starting_pose);
-	poseMsgToKDL(gm_starting_pose, starting_pose);
-	starting_twist = Twist::Zero();
-	twistKDLToMsg(starting_twist, gm_starting_twist);
-	m_velocity_desi_port.write(gm_starting_twist);
+	m_position_desi_port.write(starting_pose);
+	m_velocity_desi_port.write(starting_twist);
 	return true;
 }
 
 void CartesianGeneratorPos::updateHook()
 {
-	geometry_msgs::Pose gm_pos_dsr;
-	geometry_msgs::Twist gm_vel_dsr;
+	Frame pos_dsr;
+	Twist vel_dsr;
 
 	if (m_is_moving) {
 		m_time_passed = os::TimeService::Instance()->secondsSince(m_time_begin);
@@ -153,11 +130,11 @@ void CartesianGeneratorPos::updateHook()
 		}
 
 		// convert to geometry msgs and send.
-		poseKDLToMsg(m_position_desi_local, gm_pos_dsr);
-		twistKDLToMsg(m_velocity_desi_local, gm_vel_dsr);
+		m_position_desi_local=pos_dsr;
+		m_velocity_desi_local=vel_dsr;
 
-		m_position_desi_port.write(gm_pos_dsr);
-		m_velocity_desi_port.write(gm_vel_dsr);
+		m_position_desi_port.write(pos_dsr);
+		m_velocity_desi_port.write(vel_dsr);
 	}
 }
 
@@ -165,20 +142,22 @@ void CartesianGeneratorPos::stopHook() { }
 
 void CartesianGeneratorPos::cleanupHook() { }
 
-bool CartesianGeneratorPos::moveToKDL(Frame pose, double time)
+bool CartesianGeneratorPos::moveTo(Frame pose, double time)
 {
-	geometry_msgs::Pose gm_pose_msr;
+	KDL::Frame pose_msr;
+
 	if(!this->isRunning()){
 		log(Error)<<this->getName()<<" is not running yet."<<endlog();
 		return false;
 	}
-	m_max_duration = 0;
 
+	m_max_duration = 0;
 	m_traject_end=pose;
 
 	// get current position
-	m_position_meas_port.read(gm_pose_msr);
-	poseMsgToKDL(gm_pose_msr, m_traject_begin);
+	m_position_meas_port.read(pose_msr);
+	pose_msr= m_traject_begin;
+
 	m_velocity_begin_end = diff(m_traject_begin, m_traject_end);
 
 	// Set motion profiles
@@ -201,41 +180,8 @@ bool CartesianGeneratorPos::moveToKDL(Frame pose, double time)
 
 	return true;
 }
-bool CartesianGeneratorPos::moveTo(geometry_msgs::Pose pose, double time)
-{
 
-	KDL::Frame T;
-	poseMsgToKDL(pose,T);
-	return moveToKDL(T,time);
-}
-bool CartesianGeneratorPos::moveToWithOffset(geometry_msgs::Pose offset, geometry_msgs::Pose delta, double time)
-{
-
-	KDL::Frame TOff;
-	KDL::Frame Tdelta;
-	poseMsgToKDL(offset,TOff);
-	poseMsgToKDL(delta,Tdelta);
-	KDL::Frame T=TOff*Tdelta;
-
-
-	return moveToKDL(T,time);
-}
-bool CartesianGeneratorPos::moveToWithOffsetKDL(KDL::Frame offset, geometry_msgs::Pose delta, double time)
-{
-
-
-	KDL::Frame Tdelta;
-
-	poseMsgToKDL(delta,Tdelta);
-	KDL::Frame T=offset*Tdelta;
-
-
-	return moveToKDL(T,time);
-}
-
-
-
-bool CartesianGeneratorPos::setPose(geometry_msgs::Pose t_pose)
+bool CartesianGeneratorPos::setPose(KDL::Frame t_pose)
 {
 
 	if(!this->isRunning()){
@@ -243,29 +189,22 @@ bool CartesianGeneratorPos::setPose(geometry_msgs::Pose t_pose)
 		return false;
 	}
 
-	geometry_msgs::Twist vel;
-	twistKDLToMsg(KDL::Twist::Zero(),vel );
-
-
-
 	m_is_moving = false;
 	m_position_desi_port.write(t_pose);
-	m_velocity_desi_port.write(vel);
+	m_velocity_desi_port.write(KDL::Twist::Zero());
 
 	return true;
 }
 
 void CartesianGeneratorPos::resetPosition()
 {
-	geometry_msgs::Pose pose;
-	geometry_msgs::Twist twist;
+	Frame pose;
 
 	m_position_meas_port.read(pose);
 	m_position_desi_port.write(pose);
 
 	SetToZero(m_velocity_desi_local);
-	twistKDLToMsg(m_velocity_desi_local, twist);
-	m_velocity_desi_port.write(twist);
+	m_velocity_desi_port.write(Twist::Zero());
 
 	m_is_moving = false;
 	event_port.write(pose_reset_event);

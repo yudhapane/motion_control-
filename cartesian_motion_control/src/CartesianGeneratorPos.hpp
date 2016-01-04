@@ -25,9 +25,6 @@
 #include <rtt/Port.hpp>
 #include <rtt/os/TimeService.hpp>
 
-#include <geometry_msgs/Pose.h>
-#include <tf_conversions/tf_kdl.h>
-
 #include <kdl/velocityprofile_trap.hpp>
 #include <kdl/kdl.hpp>
 #include <kdl/frames.hpp>
@@ -38,10 +35,10 @@ namespace MotionControl
 {
     /**
      * This class implements a TaskContext that creates a path in
-     * Cartesian space between the current cartesian position and a
-     * new desired cartesian position. It uses trapezoidal
+     * Cartesian space between the current Cartesian position and a
+     * new desired Cartesian position. It uses trapezoidal
      * velocity-profiles for every dof using a maximum velocity and a
-     * maximum acceleration. It generates frame and twist setpoints
+     * maximum acceleration. It generates frame and twist set-points
      * which can be used by MotionControl::CartesianControllerPos,
      * MotionControl::CartesianControllerPosVel or MotionControl::CartesianControllerVel.
      *
@@ -49,34 +46,25 @@ namespace MotionControl
     class CartesianGeneratorPos : public RTT::TaskContext
     {
     public:
-        /**
-         * Constructor of the class.
-         *
-         * @param name name of the TaskContext
-         */
-        CartesianGeneratorPos(std::string name);
-        virtual ~CartesianGeneratorPos();
+    	CartesianGeneratorPos(std::string name);
+    	virtual ~CartesianGeneratorPos();
 
-        virtual bool configureHook();
-        virtual bool startHook();
-        virtual void updateHook();
-        virtual void stopHook();
-        virtual void cleanupHook();
-	bool setPose(geometry_msgs::Pose t_pose);
-
+    	virtual bool configureHook();
+    	virtual bool startHook();
+    	virtual void updateHook();
+    	virtual void stopHook();
+    	virtual void cleanupHook();
+    	bool setPose(KDL::Frame t_pose);
+    	bool moveTo(KDL::Frame pose, double time=0);
+    	void resetPosition();
     private:
-        bool moveTo(geometry_msgs::Pose pose, double time=0);
-        bool moveToKDL(KDL::Frame pose, double time=0);
 
-        bool moveToWithOffset(geometry_msgs::Pose offset, geometry_msgs::Pose delta, double time=0);
-        bool moveToWithOffsetKDL(KDL::Frame offset, geometry_msgs::Pose delta, double time=0);
-        void resetPosition();
 
       KDL::Frame                        m_traject_end, m_traject_begin;
       KDL::Frame                        m_position_desi_local;
       KDL::Twist                        m_velocity_desi_local, m_velocity_begin_end, m_velocity_delta;
       KDL::Twist                        m_maximum_velocity, m_maximum_acceleration;
-      geometry_msgs::Twist              m_gm_maximum_velocity, m_gm_maximum_acceleration;
+
 
       std::vector<KDL::VelocityProfile_Trap>      m_motion_profile;
       RTT::os::TimeService::ticks                     m_time_begin;
@@ -91,16 +79,16 @@ namespace MotionControl
     protected:
       /// Dataport containing the current measured end-effector
       /// frame, shared with MotionControl::CartesianSensor
-      RTT::InputPort< geometry_msgs::Pose >   m_position_meas_port;
+      RTT::InputPort< KDL::Frame >   m_position_meas_port;
 
       /// Dataport containing the current desired end-effector
       /// frame, shared with MotionControl::CartesianControllerPos,
       /// MotionControl::CartesianControllerPosVel
-      RTT::OutputPort< geometry_msgs::Pose >  m_position_desi_port;
+      RTT::OutputPort< KDL::Frame >  m_position_desi_port;
       /// Dataport containing the current desired end-effector
       /// twist, shared with MotionControl::CartesianControllerPosVel,
       /// MotionControl::CartesianControllerVel
-      RTT::OutputPort< geometry_msgs::Twist >  m_velocity_desi_port;
+      RTT::OutputPort< KDL::Twist >  m_velocity_desi_port;
 
       RTT::OutputPort<std::string> event_port;
 

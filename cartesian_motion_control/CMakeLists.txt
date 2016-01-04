@@ -18,7 +18,7 @@ project(cartesian_motion_control)
 find_package(catkin REQUIRED COMPONENTS
     rtt_ros
     tf_conversions
-    orocos_kdl
+#    orocos_kdl
         )
 
 # Defines the orocos_* cmake macros. See that file for additional
