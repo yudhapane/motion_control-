@@ -20,6 +20,8 @@
 
 #include "CartesianGeneratorPos.hpp"
 
+#include <kdl/frames_io.hpp>
+
 using namespace RTT;
 using namespace KDL;
 using namespace std;
@@ -109,7 +111,7 @@ void CartesianGeneratorPos::updateHook()
 			SetToZero(m_velocity_desi_local);
 			m_is_moving = false;
 			// send move_finished_event (once)
-            event_port.write(move_finished_event);
+            		event_port.write(move_finished_event);
 		} else {
 			// position
 			m_velocity_delta = Twist( Vector( m_motion_profile[0].Pos(m_time_passed),
@@ -128,13 +130,10 @@ void CartesianGeneratorPos::updateHook()
 				m_velocity_desi_local(i) = m_motion_profile[i].Vel(m_time_passed);
 
 		}
-
-		// convert to geometry msgs and send.
-		m_position_desi_local=pos_dsr;
-		m_velocity_desi_local=vel_dsr;
-
-		m_position_desi_port.write(pos_dsr);
-		m_velocity_desi_port.write(vel_dsr);
+		
+		// send
+		m_position_desi_port.write(m_position_desi_local);
+		m_velocity_desi_port.write(m_velocity_desi_local);
 	}
 }
 
@@ -142,9 +141,9 @@ void CartesianGeneratorPos::stopHook() { }
 
 void CartesianGeneratorPos::cleanupHook() { }
 
-bool CartesianGeneratorPos::moveTo(Frame pose, double time)
+bool CartesianGeneratorPos::moveTo(Frame _m_traject_end, double time)
 {
-	KDL::Frame pose_msr;
+
 
 	if(!this->isRunning()){
 		log(Error)<<this->getName()<<" is not running yet."<<endlog();
@@ -152,12 +151,12 @@ bool CartesianGeneratorPos::moveTo(Frame pose, double time)
 	}
 
 	m_max_duration = 0;
-	m_traject_end=pose;
+	m_traject_end=_m_traject_end;
+
 
 	// get current position
-	m_position_meas_port.read(pose_msr);
-	pose_msr= m_traject_begin;
-
+	m_position_meas_port.read(m_traject_begin);
+	
 	m_velocity_begin_end = diff(m_traject_begin, m_traject_end);
 
 	// Set motion profiles
