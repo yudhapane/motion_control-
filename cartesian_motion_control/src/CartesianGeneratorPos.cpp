@@ -60,6 +60,11 @@ CartesianGeneratorPos::CartesianGeneratorPos(string name) :
 			OwnThread) .doc("Set the position setpoint") .arg("setpoint",
 			"position setpoint for end effector") .arg("time",
 			"minimum time to execute trajectory");
+			this->addOperation("moveToWithOffset", &CartesianGeneratorPos::moveToWithOffset, this,
+					OwnThread) .doc("Set the position setpoint w_Td_ee=w_Td_base*Td_delta")
+					.arg("w_Td_base",	"position setpoint for end effector (base)")
+					.arg("Td_delta",	"position setpoint for end effector (delta)")
+					.arg("time","minimum time to execute trajectory");
 	this->addOperation("resetPosition", &CartesianGeneratorPos::resetPosition,
 			this, OwnThread).doc("Resets generator's position");
 	this->addOperation("setPose", &CartesianGeneratorPos::setPose,
@@ -130,7 +135,7 @@ void CartesianGeneratorPos::updateHook()
 				m_velocity_desi_local(i) = m_motion_profile[i].Vel(m_time_passed);
 
 		}
-		
+
 		// send
 		m_position_desi_port.write(m_position_desi_local);
 		m_velocity_desi_port.write(m_velocity_desi_local);
@@ -141,10 +146,13 @@ void CartesianGeneratorPos::stopHook() { }
 
 void CartesianGeneratorPos::cleanupHook() { }
 
+bool CartesianGeneratorPos::moveToWithOffset(Frame _m_base,Frame _m_traject_end, double time)
+{
+	return moveTo(_m_base*_m_traject_end,time);
+}
+
 bool CartesianGeneratorPos::moveTo(Frame _m_traject_end, double time)
 {
-
-
 	if(!this->isRunning()){
 		log(Error)<<this->getName()<<" is not running yet."<<endlog();
 		return false;
@@ -156,7 +164,7 @@ bool CartesianGeneratorPos::moveTo(Frame _m_traject_end, double time)
 
 	// get current position
 	m_position_meas_port.read(m_traject_begin);
-	
+
 	m_velocity_begin_end = diff(m_traject_begin, m_traject_end);
 
 	// Set motion profiles

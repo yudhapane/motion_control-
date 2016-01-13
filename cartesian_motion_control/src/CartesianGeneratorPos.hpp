@@ -56,6 +56,7 @@ namespace MotionControl
     	virtual void cleanupHook();
     	bool setPose(KDL::Frame t_pose);
     	bool moveTo(KDL::Frame pose, double time=0);
+      bool moveToWithOffset(KDL::Frame base_pose,KDL::Frame pose, double time=0);
     	void resetPosition();
     private:
 
