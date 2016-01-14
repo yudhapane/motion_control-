@@ -30,7 +30,7 @@ target_link_libraries(CartesianImpedanceController ${catkin_LIBRARIES} ${USE_ORO
 #
 # Installs in the include/orocos/cartesian_motion_control/ directory
 #
-orocos_install_headers( src/CartesianControllerPos.hpp ) # ...you may add multiple header files
+# orocos_install_headers( CartesianControllerPos.hpp ) # ...you may add multiple header files
 #
 # You may add multiple orocos_install_headers statements.
 
