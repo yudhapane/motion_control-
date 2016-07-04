@@ -15,10 +15,9 @@ project(naxes_motion_control)
 #if (NOT OROCOS-RTT_FOUND)
 #  message (FATAL_ERROR "\nCould not find Orocos. Please use the shell command\n 'source orocos_toolchain/env.sh' and then run cmake again.")
 #endif()
+find_package(orocos_kdl REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
     rtt_ros
-    #    tf_conversions
-    orocos_kdl
         )
 
 # Defines the orocos_* cmake macros. See that file for additional
