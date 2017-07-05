@@ -26,7 +26,7 @@ find_package(catkin REQUIRED COMPONENTS
 include( ${OROCOS-RTT_USE_FILE_PATH}/UseOROCOS-RTT.cmake )
 
 find_package(cmake_modules REQUIRED)
-find_package(Eigen3 REQUIRED)
+find_package(Eigen REQUIRED)
 include_directories( include ${catkin_INCLUDE_DIRS} ${Eigen_INCLUDE_DIRS})
 include_directories(${USE_OROCOS_INCLUDE_DIRS})
 # Rest of the configuration is in src/
