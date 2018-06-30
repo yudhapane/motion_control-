@@ -13,7 +13,6 @@
 
   <build_depend>rtt</build_depend>
   <build_depend>rtt_ros</build_depend>
-  <build_depend>orogen</build_depend>
   <build_depend>ocl</build_depend>
   <build_depend>orocos_kdl</build_depend>
   <build_depend>tf_conversions</build_depend>
